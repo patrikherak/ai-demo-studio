@@ -22,8 +22,9 @@ the scripts are dependency-free Node, Bash and Python.
 ```bash
 git clone https://github.com/patrikherak/ai-demo-studio.git
 cd ai-demo-studio
-cp .env.example .env              # add ELEVENLABS_API_KEY (skip it for silent videos)
+cp .env.example .env
 bash scripts/setup-tools.sh       # Playwright + Chromium + ffmpeg, no sudo
+node scripts/configure-voice.mjs  # narration language, provider, model and voice, with samples
 bash scripts/doctor.sh            # what is ready, what is missing
 bash scripts/selftest.sh          # records the bundled sample app end to end (~30 s)
 bash scripts/selftest.sh --look   # the same app as a branded film: cards, stage, SFX, music (~60 s)
@@ -65,6 +66,7 @@ scripts/
   inventory.mjs                stack, services, env keys, migrations, seeds, ports
   brand.mjs                    brand kit (colours, fonts, logo, copy) from the product's website
   images.mjs                   synthetic stock photos for seed data (OpenAI Images, cached)
+  configure-voice.mjs          pick narration language, provider, model and voice (interactive or flags)
   voices.mjs  narrate.mjs      voices; narration per segment, mastered, with word timing
   fit-scenes.mjs               size scenes to their narration, sentence and word cues, beat lock
   record.mjs                   Playwright recorder (CDP screencast) and animated card renderer
@@ -110,6 +112,25 @@ node scripts/build-clip.mjs work/app/scenes/03-board.json
 node scripts/concat.mjs work/app/final/app-demo.mp4 work/app/clips/*.mp4 --music work/app/audio/music.wav --loudness -16
 python3 scripts/av_check.py work/app/final/app-demo.mp4 --expect-audio
 ```
+
+## Any language
+
+The narration language is its own setting (`NARRATION_LANGUAGE`, optional `NARRATION_LOCALE`),
+separate from the language the product's UI is filmed in (`DEMO_LANGUAGE`): a German-only app
+can get an English, French or Japanese voice-over. `configure-voice.mjs` asks for the language,
+then offers only ElevenLabs models and voices that speak it (your voices or the public voice
+library, added to your account when you pick one), OpenAI voices with a style, or installed
+macOS voices, plays a sample sentence in that language and saves the choice to `.env`.
+Agents use the same tool non-interactively:
+
+```bash
+node scripts/configure-voice.mjs --list models --language fr
+node scripts/configure-voice.mjs --list voices --language fr --library --gender female
+node scripts/configure-voice.mjs --set --language fr --provider elevenlabs --model eleven_multilingual_v2 --voice <id>
+```
+
+Every provider is told the language, word timing is aligned in that language, and cards format
+numbers for the locale.
 
 ## The production look
 

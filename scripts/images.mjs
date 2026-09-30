@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fail, flagValue, hasFlag, loadEnv } from "./lib/env.mjs";
+import { openaiBase } from "./lib/voice.mjs";
 
 const HELP = `Generate synthetic stock photos for demo seed data (OpenAI Images API).
 
@@ -51,7 +52,7 @@ const hash = (value) => createHash("sha256").update(value).digest("hex").slice(0
 async function generate(image) {
   const body = { model, prompt: image.prompt + style, size: image.size ?? "1536x1024", quality: image.quality ?? quality, n: 1 };
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
+    const response = await fetch(`${openaiBase()}/v1/images/generations`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),

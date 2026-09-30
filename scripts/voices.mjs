@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 import { fail, flagValue, hasFlag, loadEnv } from "./lib/env.mjs";
+import { elevenBase } from "./lib/voice.mjs";
 
 const HELP = `List ElevenLabs voices available to your account, with their labels.
 
   node scripts/voices.mjs [--accent american] [--gender female] [--use-case narration] [--search warm] [--json]
 
 Pick a voice whose labels match the brief (accent and use case matter more than
-language), then set ELEVENLABS_VOICE_ID or "voiceId" in narration.json.`;
+language), then set ELEVENLABS_VOICE_ID or "voiceId" in narration.json. For a guided
+choice by language, with models, the public library and samples, use
+node scripts/configure-voice.mjs.`;
 
 const args = process.argv.slice(2);
 if (hasFlag(args, "-h") || hasFlag(args, "--help")) {
@@ -17,7 +20,7 @@ loadEnv();
 const apiKey = process.env.ELEVENLABS_API_KEY;
 if (!apiKey) fail("ELEVENLABS_API_KEY is not set (see .env.example)");
 
-const response = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": apiKey } });
+const response = await fetch(`${elevenBase()}/v1/voices`, { headers: { "xi-api-key": apiKey } });
 if (!response.ok) fail(`ElevenLabs ${response.status}: ${(await response.text()).slice(0, 200)}`);
 const { voices = [] } = await response.json();
 

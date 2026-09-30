@@ -44,10 +44,24 @@ if [ -d "$TOOLDIR/node_modules/playwright" ]; then row ok playwright "$TOOLDIR/n
 node_major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
 if [ "$node_major" -lt 18 ]; then row MISS "node >= 18" "found $node_major"; missing=1; fi
 
+echo "narration"
+provider="${NARRATION_PROVIDER:-}"
+if [ -z "$provider" ]; then
+  if [ -n "${ELEVENLABS_API_KEY:-}" ]; then provider=elevenlabs; elif [ -n "${OPENAI_API_KEY:-}" ]; then provider=openai; elif command -v say >/dev/null 2>&1; then provider=say; else provider=none; fi
+  provider="$provider (auto)"
+fi
+row info language "${NARRATION_LANGUAGE:-${DEMO_LANGUAGE:-en}}${NARRATION_LOCALE:+ ($NARRATION_LOCALE)}"
+row info provider "$provider"
+case "$provider" in
+  elevenlabs*) row info voice "${ELEVENLABS_VOICE_ID:-not set} · model ${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}";;
+  openai*) row info voice "${OPENAI_TTS_VOICE:-coral} · ${OPENAI_TTS_MODEL:-gpt-4o-mini-tts}";;
+  say*) row info voice "${SAY_VOICE:-best installed voice for the language}";;
+esac
+[ -n "${NARRATION_PROVIDER:-}" ] || echo "  tip: node scripts/configure-voice.mjs picks language, provider, model and voice (with samples)"
+
 echo "env (.env)"
-for key in ELEVENLABS_API_KEY ELEVENLABS_VOICE_ID ELEVENLABS_MODEL_ID DEMO_WORKDIR PROJECT_PATH PROJECT_REPO_URL GIT_TOKEN DELIVERY_S3_BUCKET; do
+for key in ELEVENLABS_API_KEY ELEVENLABS_VOICE_ID ELEVENLABS_MODEL_ID OPENAI_API_KEY DEMO_WORKDIR PROJECT_PATH PROJECT_REPO_URL GIT_TOKEN DELIVERY_S3_BUCKET; do
   if [ -n "${!key:-}" ]; then row set "$key" ""; else row unset "$key" ""; fi
 done
-[ -n "${ELEVENLABS_API_KEY:-}" ] || echo "  note: without ELEVENLABS_API_KEY the pipeline can still record silent videos"
 
 exit "$missing"

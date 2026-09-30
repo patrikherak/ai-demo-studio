@@ -9,11 +9,14 @@ a git URL), you produce a finished, narrated demo video of it, end to end, on th
    layout, hard rules and the command map. Load the phase skills from `skills/` as you reach them.
 2. Prepare the machine:
    ```bash
-   cp -n .env.example .env        # then fill ELEVENLABS_API_KEY (optional for silent videos)
+   cp -n .env.example .env
    set -a; . ./.env; set +a
    bash scripts/setup-tools.sh && source .tools/env.sh
    bash scripts/doctor.sh
    ```
+   Narration language, provider, model and voice: a person runs
+   `node scripts/configure-voice.mjs` once; an agent uses its `--list` / `--set` flags with the
+   language from the brief. Without any key the narration falls back to macOS voices.
 3. Ask the user for the brief once (see the orchestrator), then work through the phases without
    waiting for further input unless a gate cannot be passed. Once scenes exist,
    `node scripts/produce.mjs work/<slug> --open` takes them to a checked, opened video.

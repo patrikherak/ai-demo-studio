@@ -30,7 +30,8 @@ export async function renderCardScene(scene, scenePath) {
   if (missingWord) throw new Error(`card uses word:${missingWord} but that word is not in the scene's narration timing; run narrate.mjs (word alignment) and fit-scenes.mjs`);
   const output = resolve(baseDir, scene.output);
   mkdirSync(dirname(output), { recursive: true });
-  const init = `window.__CARD__ = ${JSON.stringify(card)}; window.__BRAND_CSS__ = ${JSON.stringify(brandCss)};`;
+  const locale = card.locale || process.env.NARRATION_LOCALE || process.env.NARRATION_LANGUAGE || process.env.DEMO_LANGUAGE || "en";
+  const init = `window.__CARD__ = ${JSON.stringify(card)}; window.__BRAND_CSS__ = ${JSON.stringify(brandCss)}; window.__LOCALE__ = ${JSON.stringify(locale)};`;
   const result = await renderFrames({
     url: pathToFileURL(html).href,
     width,

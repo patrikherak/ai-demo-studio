@@ -86,3 +86,6 @@ export LD_LIBRARY_PATH="${LDPATH}${LDPATH:+:}\${LD_LIBRARY_PATH:-}"
 ENV
 log "wrote $TOOLDIR/env.sh"
 cat "$TOOLDIR/env.sh"
+if [ -z "${NARRATION_PROVIDER:-}" ] && ! grep -qs '^NARRATION_PROVIDER=.' "$ROOT/.env"; then
+  log "next: node scripts/configure-voice.mjs   (narration language, provider, model and voice, with samples)"
+fi

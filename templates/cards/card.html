@@ -394,7 +394,9 @@ build();
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
-const numberFormat = (decimals) => new Intl.NumberFormat(card.locale ?? "en-US", { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+const locale = card.locale ?? window.__LOCALE__ ?? "en";
+document.documentElement.lang = locale;
+const numberFormat = (decimals) => new Intl.NumberFormat(locale, { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
 const slides = [...document.querySelectorAll("[data-slide]")];
 const slideBackgrounds = (card.backgrounds ?? ["var(--tint-1)", "var(--dark)", "var(--tint-2)", "var(--bg)"]).map((b) => (b.startsWith("var(") || b.startsWith("#") ? b : `var(--${b})`));
 

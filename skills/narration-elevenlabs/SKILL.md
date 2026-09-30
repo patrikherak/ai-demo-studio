@@ -23,6 +23,23 @@ Every segment is mastered after generation (edge silence trimmed, -18 LUFS), so 
 different takes match. Word timing comes from ElevenLabs itself or, for the other providers,
 from OpenAI's transcription API; `fit-scenes.mjs` turns it into sentence and word cues.
 
+## 0. Language, model and voice in one go
+
+```bash
+node scripts/configure-voice.mjs                                    # a person: guided, with samples
+node scripts/configure-voice.mjs --list models --language de        # an agent: what speaks German
+node scripts/configure-voice.mjs --list voices --language de [--library] [--gender female] [--json]
+node scripts/configure-voice.mjs --set --language de --locale de-CH --provider elevenlabs \
+  --model eleven_multilingual_v2 --voice <id or name> [--add-library]
+node scripts/configure-voice.mjs --sample --out work/<slug>/audio/sample.mp3
+```
+
+It writes `NARRATION_LANGUAGE`, `NARRATION_LOCALE`, `NARRATION_PROVIDER` and the provider's
+model/voice keys to `.env`. Only models whose language list contains the narration language are
+offered; `ELEVENLABS_LANGUAGE_CODE` is set only for models that can enforce a language
+(turbo/flash v2.5). A voice from the public library is added to the account before use.
+`"language"` in `narration.json` overrides the default per job.
+
 ## 1. Choose the voice
 
 ```bash

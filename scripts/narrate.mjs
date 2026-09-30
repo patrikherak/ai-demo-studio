@@ -5,14 +5,15 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { dirname, join, relative, resolve } from "node:path";
 import { envNumber, fail, flagValue, hasFlag, loadEnv } from "./lib/env.mjs";
 import { ffmpegBin, mediaDuration, run } from "./lib/media.mjs";
+import { elevenBase, languageName, modelEnforcesLanguage, narrationLanguage, openaiBase, openaiInstructions, sayVoices } from "./lib/voice.mjs";
 
 const HELP = `Generate narration, one audio file per segment, and measure it.
 
   node scripts/narrate.mjs <narration.json> [--out-dir DIR] [--dry-run] [--force] [--timestamps] [--provider NAME]
 
 narration.json:
-  { "provider": "elevenlabs",
-    "voiceId": "…", "modelId": "…", "languageCode": "en",
+  { "provider": "elevenlabs", "language": "de",
+    "voiceId": "…", "modelId": "…",
     "voiceSettings": { "stability": 0.5, "similarity_boost": 0.75, "speed": 1.0 },
     "openai": { "voice": "coral", "model": "gpt-4o-mini-tts", "instructions": "Warm, confident narrator…" },
     "say": { "voice": "Ava (Premium)", "rate": 180 },
@@ -23,6 +24,9 @@ Providers: elevenlabs (ELEVENLABS_API_KEY; best quality, word timing), openai
 stand-in quality). The provider comes from --provider, narration.json,
 NARRATION_PROVIDER or the first one whose key is present, so a run never stops
 for a missing key; the manifest and the report say which one was used.
+The language comes from "language" in narration.json, else NARRATION_LANGUAGE,
+else DEMO_LANGUAGE; every provider is told to speak it (see configure-voice.mjs
+to pick a model and voice for it interactively).
 voiceId/modelId default to ELEVENLABS_VOICE_ID / ELEVENLABS_MODEL_ID from .env.
 Writes <out-dir>/<id>.mp3 and <out-dir>/manifest.json (durations, text hashes).
 Unchanged segments are reused, so re-running costs nothing. --dry-run only counts
@@ -49,6 +53,7 @@ const dryRun = hasFlag(args, "--dry-run");
 const force = hasFlag(args, "--force");
 const timestamps = hasFlag(args, "--timestamps");
 
+const language = narrationLanguage(spec);
 const sayAvailable = process.platform === "darwin" && spawnSync("say", ["-v", "?"], { encoding: "utf8" }).status === 0;
 const provider = flagValue(args, "--provider") || spec.provider || process.env.NARRATION_PROVIDER
   || (process.env.ELEVENLABS_API_KEY ? "elevenlabs" : process.env.OPENAI_API_KEY ? "openai" : sayAvailable ? "say" : null);
@@ -57,22 +62,15 @@ if (!["elevenlabs", "openai", "say"].includes(provider)) fail(`unknown provider 
 const openai = {
   model: spec.openai?.model || process.env.OPENAI_TTS_MODEL || "gpt-4o-mini-tts",
   voice: spec.openai?.voice || process.env.OPENAI_TTS_VOICE || "coral",
-  instructions: spec.openai?.instructions || process.env.OPENAI_TTS_INSTRUCTIONS
-    || "Warm, confident and friendly product-video narrator. Natural pace, clear articulation, light smile in the voice, no dramatic pauses.",
+  instructions: openaiInstructions(spec.openai?.instructions || process.env.OPENAI_TTS_INSTRUCTIONS
+    || "Warm, confident and friendly product-video narrator. Natural pace, clear articulation, light smile in the voice, no dramatic pauses.", language),
   speed: spec.openai?.speed ?? envNumber("OPENAI_TTS_SPEED", 1.0),
 };
-function bestSayVoice() {
-  const list = spawnSync("say", ["-v", "?"], { encoding: "utf8" }).stdout ?? "";
-  const names = list.split("\n").map((l) => l.match(/^(.+?)\s{2,}(\w\w_\w\w)/)).filter(Boolean).map((m) => ({ name: m[1].trim(), locale: m[2] }));
-  const wanted = (spec.languageCode || process.env.DEMO_LANGUAGE || "en").slice(0, 2);
-  const preferred = ["Ava (Premium)", "Zoe (Premium)", "Evan (Premium)", "Ava (Enhanced)", "Zoe (Enhanced)", "Samantha"];
-  return preferred.find((p) => names.some((n) => n.name === p)) ?? names.find((n) => n.locale.startsWith(wanted))?.name ?? "Samantha";
-}
-const say = { voice: spec.say?.voice || process.env.SAY_VOICE || (provider === "say" ? bestSayVoice() : null), rate: spec.say?.rate ?? envNumber("SAY_RATE", 180) };
+const say = { voice: spec.say?.voice || process.env.SAY_VOICE || (provider === "say" ? sayVoices(language, process.env.NARRATION_LOCALE)[0]?.id ?? "Samantha" : null), rate: spec.say?.rate ?? envNumber("SAY_RATE", 180) };
 const voiceId = provider === "openai" ? openai.voice : provider === "say" ? say.voice : spec.voiceId || process.env.ELEVENLABS_VOICE_ID;
 const modelId = spec.modelId || process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
 const outputFormat = spec.outputFormat || process.env.ELEVENLABS_OUTPUT_FORMAT || "mp3_44100_128";
-const languageCode = spec.languageCode || process.env.ELEVENLABS_LANGUAGE_CODE || undefined;
+const languageCode = spec.languageCode || process.env.ELEVENLABS_LANGUAGE_CODE || (modelEnforcesLanguage(modelId) ? language : undefined);
 const voiceSettings = {
   stability: envNumber("ELEVENLABS_STABILITY", 0.5),
   similarity_boost: envNumber("ELEVENLABS_SIMILARITY_BOOST", 0.75),
@@ -152,7 +150,7 @@ function estimatedAlignment(text, durationSec) {
 
 async function synthesizeOpenAI(segment) {
   for (let attempt = 1; attempt <= 4; attempt++) {
-    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+    const response = await fetch(`${openaiBase()}/v1/audio/speech`, {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: openai.model, voice: openai.voice, input: segment.text, instructions: openai.instructions, speed: openai.speed, response_format: "mp3" }),
@@ -187,7 +185,7 @@ async function synthesize(segment, index, file) {
     next_text: segments[index + 1]?.text,
     ...(languageCode ? { language_code: languageCode } : {}),
   };
-  const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}${timestamps ? "/with-timestamps" : ""}?output_format=${encodeURIComponent(outputFormat)}`;
+  const endpoint = `${elevenBase()}/v1/text-to-speech/${encodeURIComponent(voiceId)}${timestamps ? "/with-timestamps" : ""}?output_format=${encodeURIComponent(outputFormat)}`;
   for (let attempt = 1; attempt <= 4; attempt++) {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -222,7 +220,7 @@ function masterAudio(file) {
 }
 
 function sentenceCount(text) {
-  return Math.max(1, (text.match(/[.!?…]+(\s|$)/g) ?? []).length);
+  return Math.max(1, (text.match(/[.!?…。！？؟]+(\s|$)|[。！？]/g) ?? []).length);
 }
 
 function sentenceStartsFromAlignment(alignment, text) {
@@ -248,7 +246,7 @@ function sentenceStartsFromSilence(file, text) {
   return [0, ...pauses].map((t) => Number(t.toFixed(3)));
 }
 
-const normalizeWord = (w) => w.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
+const normalizeWord = (w) => w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}]/gu, "");
 
 async function transcribeWords(file) {
   const form = new FormData();
@@ -256,8 +254,9 @@ async function transcribeWords(file) {
   form.append("model", "whisper-1");
   form.append("response_format", "verbose_json");
   form.append("timestamp_granularities[]", "word");
+  form.append("language", language);
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: form });
+    const response = await fetch(`${openaiBase()}/v1/audio/transcriptions`, { method: "POST", headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: form });
     if (response.ok) return (await response.json()).words ?? [];
     if (attempt === 3 || (response.status !== 429 && response.status < 500)) {
       console.log(`WARN word alignment failed (${response.status}); falling back to pause detection`);
@@ -285,7 +284,7 @@ function alignWords(text, heard) {
 
 function sentenceStartsFromWords(words) {
   const starts = [];
-  words.forEach((w, i) => { if (i === 0 || /[.!?…]$/.test(words[i - 1].word)) starts.push(w.start); });
+  words.forEach((w, i) => { if (i === 0 || /[.!?…。！？؟]$/.test(words[i - 1].word)) starts.push(w.start); });
   return starts;
 }
 
@@ -346,6 +345,8 @@ for (const [index, segment] of segments.entries()) {
 
 const manifest = {
   provider,
+  language,
+  languageName: languageName(language),
   voiceId,
   modelId: provider === "openai" ? openai.model : provider === "say" ? "say" : modelId,
   instructions: provider === "openai" ? openai.instructions : undefined,

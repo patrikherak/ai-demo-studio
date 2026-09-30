@@ -41,7 +41,9 @@ state them in `brief.md`:
 
 - target project: path or git URL (required)
 - audience and goal (default: prospective users; show the core value in the first 10 s)
-- language of UI, data and voice (default: `DEMO_LANGUAGE` or English)
+- language of the voice-over, cards and chips (default: `NARRATION_LANGUAGE` or English) and,
+  separately, the language the UI is filmed in and the seed data is written in (default:
+  `DEMO_LANGUAGE`; film the UI in a language it really ships in)
 - length (default: 60–90 s; the measured narration decides the final runtime)
 - must-show features / must-avoid areas (default: pick from analysis)
 - voice style (default: warm, confident narrator; see `narration-elevenlabs`)
