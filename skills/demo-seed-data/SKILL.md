@@ -56,6 +56,15 @@ Screens full of placeholder images or real people look wrong. In this order:
 Convert them to JPEG around 1600 px before uploading them through the app's own models or
 uploaders. Logos of real customers found on a marketing site never go into a video.
 
+## Seed scripts that run inside the app
+
+Scripts run through the framework's runner (`rails runner`, `artisan tinker`, `manage.py
+shell`) share a global namespace with the framework: a helper named like a DSL method
+(`configure`, `set`, `get`, `post`, `helpers`) can be silently shadowed. Keep helpers in a
+module or give them unmistakable names, and print what each settings write actually stored.
+Reset what a recording changes (a booking, a sign-up, a status) through scene `hooks` so any
+scene can be re-recorded on its own.
+
 ## Demo user and access
 
 Create one demo user with the role that sees the whole story (often an admin of a demo

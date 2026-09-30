@@ -9,7 +9,7 @@ import { ffmpegBin, run, streamDurations } from "./lib/media.mjs";
 const HELP = `Join finished clips (from build-clip.mjs) into one video and keep audio and video in sync.
 
   node scripts/concat.mjs <final.mp4> <clip1.mp4> <clip2.mp4>... [--max-drift 0.05]
-      [--music bed.wav] [--music-gain -14] [--duck-db 9] [--loudness -16] [--open]
+      [--music bed.wav] [--music-gain -14] [--duck-db 9] [--loudness -16] [--open] [--reveal]
 
 Clips must share encoding settings (build-clip.mjs guarantees that). The result is
 trimmed to the video stream length when the audio drifts more than --max-drift seconds.
@@ -18,7 +18,8 @@ trimmed to the video stream length when the audio drifts more than --max-drift s
 whole video: it is trimmed to the video, faded in and out, and ducked under the
 narration with a sidechain compressor, so the voice always stays on top.
 --loudness masters the final mix to that integrated loudness (LUFS, true peak
--1.5 dBTP); -16 suits web and social players. --open opens the finished video.`;
+-1.5 dBTP); -16 suits web and social players. --open opens the finished video,
+--reveal shows it in Finder / Explorer / the file manager.`;
 
 const args = process.argv.slice(2);
 if (args.length < 2 || hasFlag(args, "-h") || hasFlag(args, "--help")) {
@@ -78,4 +79,9 @@ if (hasFlag(args, "--open")) {
   const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open";
   const opened = spawnSync(opener, [out], { stdio: "ignore" });
   console.log(opened.status === 0 ? `OPENED ${out}` : `WARN could not open ${out} with ${opener}`);
+}
+if (hasFlag(args, "--reveal")) {
+  const [command, commandArgs] = process.platform === "darwin" ? ["open", ["-R", out]] : process.platform === "win32" ? ["explorer", [`/select,${out}`]] : ["xdg-open", [dirname(out)]];
+  const revealed = spawnSync(command, commandArgs, { stdio: "ignore" });
+  console.log(revealed.status === 0 ? `REVEALED ${out}` : `WARN could not reveal ${out}`);
 }

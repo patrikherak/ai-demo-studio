@@ -55,6 +55,16 @@ app before recording (see `record-scenes`, "probe selectors").
   the data: seeded names and descriptions must already be in the target language.
 - Where does the UI show the signed-in identity (avatar menu, sidebar, settings)? Plan a mask.
 
+## Probe before you script
+
+Write throwaway probe scenes (`"strict": false`, `goto` + `waitMs` + `screenshot` per screen,
+and one probe per interactive flow with a screenshot after every step), then look at them in
+one image: `node scripts/sheet.mjs work/<slug>/qa/probe.jpg work/<slug>/probe/*.png --labels`.
+Probing shows what the code does not: loading overlays, dialogs in the middle of a flow,
+buttons that are hidden duplicates, default values that are empty, and how long each step
+really takes. Keep probes outside `scenes/` (or prefix them with `_`) so they are never part of
+the video.
+
 ## 5. The story moments
 
 Choose 4–7 moments that prove the product's value to the audience in the brief. For each:

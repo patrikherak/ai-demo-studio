@@ -52,6 +52,21 @@ take is not usable; fix the selector or the data and record again. Each take wri
 Paths are relative to the scene file. `narration`, `audio` and `minDurationMs` are filled in by
 `fit-scenes.mjs`; you do not write them by hand for narrated videos.
 
+### Shared settings
+
+Put what every scene shares (`baseUrl`, `viewport`, `deviceScaleFactor`, `setup`, `brand`,
+`sfx`, `hide`, stage defaults) into `scenes/_base.json` and start each scene with
+`"extends": "_base.json"`. Objects merge key by key (a scene can override one `stage` key),
+arrays and values are replaced. Paths stay relative to the scene folder, so keep the base
+there. Files starting with `_` are never rendered as scenes.
+
+### Resettable scenes
+
+`"hooks": { "before": "…", "after": "…" }` run shell commands in the scene folder around the
+take, typically a seed script that undoes what the previous take changed. With hooks and
+`produce.mjs` (which re-records only scenes whose content changed) any scene can be redone
+alone.
+
 ### Capture quality
 
 `capture: "screencast"` (default) streams full-resolution frames over CDP at the scene's
@@ -84,7 +99,9 @@ In a staged scene a `legend` step records a callout instead of drawing it in the
 `{"legend": {"style": "chip", "icon": "camera", "title": "Photo attached", "position":
 "bottom-right", "ms": 2400, "tone": 2, "dx": 0, "dy": 0, "wait": false}}`. `style: "chip"` is a
 compact icon + title (+ `text`), the default is a card with `tag`, `title`, `text`. `wait:
-false` lets the next step run while the callout is shown. Icons: news, wrench, calendar, users,
+false` lets the next step run while the callout is shown. Callout copy (title, text, icon, tone,
+position) is read from the scene again when the clip is built, so wording fixes need only
+`build-clip.mjs` as long as no steps were inserted or removed. Icons: news, wrench, calendar, users,
 tag, chart, file, inbox, plug, home, bell, chat, check, shield, phone, globe, key, clock, mail,
 camera, paper, sparkle, building, user, send, plus, heart, star, x, arrow.
 
@@ -139,6 +156,7 @@ points at a custom template that defines `window.__frame(t, total)`.
 | `{"evaluate": "js"}` | run JavaScript in the page (escape hatch), e.g. scroll an inner container |
 | `{"upload": {"click": sel, "files": ["photo.jpg"]}}` | click an upload button and answer the file chooser (or `selector` of an `input[type=file]`) |
 | `{"focus": {"selector", "scale", "holdMs"}}` / `{"focus": null}` | ask the stage to zoom to an element / zoom out |
+| `{"scroll": {"container": "ion-content", "y": 480, "ms": 900}}` | smooth-scroll an inner scroll container (or the page without `container`); uses the component's own API when it has one |
 | `"optional": true` on any step | a miss on this step does not fail the take |
 | `"timeoutMs"` on any step | per-step wait override |
 
@@ -171,8 +189,8 @@ Make a throwaway scene with the same `goto`/`waitFor` steps plus `screenshot` st
 
 ## App quirks worth knowing
 
-- Mobile-first frameworks scroll an inner container, not the window: use an `evaluate` step
-  (Ionic: `document.querySelector('ion-content').scrollToPoint(0, 400, 900)`).
+- Mobile-first frameworks scroll an inner container, not the window: use a `scroll` step with
+  its `container`.
 - Loading overlays flash grey; `hide` them only when the step after them waits for the data it
   needs, otherwise a click can land before the screen is ready.
 - Date pickers animate month changes: give the step after a month switch ~700 ms.

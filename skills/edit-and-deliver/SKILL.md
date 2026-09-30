@@ -7,6 +7,13 @@ description: Build finished clips from raw scene takes with narration, join them
 
 Goal: `work/<slug>/final/<slug>-demo.mp4` that passes every check below, plus `REPORT.md`.
 
+## 0. One command
+
+`node scripts/produce.mjs work/<slug> --open` runs sections 1 to 4 (and the narration and
+sizing before them) in one go, re-recording only changed scenes. Settings live in
+`work/<slug>/job.json`; `--reveal` shows the file in Finder or the file manager. Use the single
+steps below when a scene needs attention.
+
 ## 1. Clips
 
 ```bash

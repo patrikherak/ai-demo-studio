@@ -28,7 +28,13 @@ export async function renderStage({ scene, scenePath, raw, sidecar, startSec, to
   if (!frameCount) throw new Error(`no frames extracted from ${raw}`);
   const canvas = scene.canvas ?? outputSize();
   const viewport = sidecar.viewport ?? scene.viewport ?? { width: 1600, height: 1000 };
-  const events = (sidecar.events ?? []).map((e) => ({ ...e, t: e.atMs / 1000 })).filter((e) => e.t > -1);
+  const legendCopy = (e) => {
+    const legend = Number.isInteger(e.step) ? scene.steps?.[e.step]?.legend : null;
+    if (e.kind !== "legend" || !legend) return e;
+    const { anchor: _anchor, wait: _wait, ...fields } = legend;
+    return { ...e, ...fields };
+  };
+  const events = (sidecar.events ?? []).map((e) => ({ ...legendCopy(e), t: e.atMs / 1000 })).filter((e) => e.t > -1);
   const stageData = {
     canvas,
     viewport,

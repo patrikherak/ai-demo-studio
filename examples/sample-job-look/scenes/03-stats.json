@@ -1,0 +1,8 @@
+{
+  "extends": "_base.json",
+  "id": "03-stats",
+  "output": "../raw/03-stats.mp4",
+  "minDurationMs": 4800,
+  "card": { "template": "stats", "eyebrow": "Sample numbers", "title": "Less chasing. **More shipping.**",
+            "items": [ { "value": 6, "label": "projects on one board" }, { "value": 2, "label": "risks flagged early" }, { "value": 18, "label": "pages approved this week" } ] }
+}

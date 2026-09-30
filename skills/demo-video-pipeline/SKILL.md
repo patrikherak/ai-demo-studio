@@ -70,6 +70,7 @@ work/<slug>/
   clips/             phase 8 finished clips (.mp4)
   qa/                phase 8 frames, contact sheets, av reports
   final/             phase 8 deliverables
+  job.json           optional produce.mjs settings (bpm, music, loudness, sfx, output)
   REPORT.md          phase 8
 ```
 
@@ -111,6 +112,9 @@ work/<slug>/
 | join | `node scripts/concat.mjs work/<slug>/final/<slug>-demo.mp4 work/<slug>/clips/*.mp4 --music work/<slug>/audio/music.wav --loudness -16 --open` |
 | frames | `bash scripts/qa-frames.sh work/<slug>/final/<slug>-demo.mp4 work/<slug>/qa/final 16` |
 | checks | `python3 scripts/av_check.py work/<slug>/final/<slug>-demo.mp4 --expect-audio` |
+| everything after the scenes | `node scripts/produce.mjs work/<slug> --open` (`--only 04`, `--record all`, `--reveal`) |
+| voice vs action | `node scripts/sync-report.mjs work/<slug>/scenes/04-report.json` |
+| compare screenshots | `node scripts/sheet.mjs work/<slug>/qa/probe.jpg work/<slug>/probe/*.png --labels` |
 | gif | `bash scripts/to-gif.sh work/<slug>/final/<slug>-demo.mp4 work/<slug>/final/<slug>.gif 3 6` |
 | upload | `bash scripts/deliver-s3.sh work/<slug>/final/<slug>-demo.mp4` |
 

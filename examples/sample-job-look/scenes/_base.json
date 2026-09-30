@@ -1,0 +1,10 @@
+{
+  "baseUrl": "http://127.0.0.1:8765",
+  "viewport": { "width": 1280, "height": 800 },
+  "deviceScaleFactor": 1.5,
+  "brand": "../brand.css",
+  "sfx": "../audio/sfx",
+  "fps": 30,
+  "hide": ["#dev-badge"],
+  "accent": "#0f7a64"
+}

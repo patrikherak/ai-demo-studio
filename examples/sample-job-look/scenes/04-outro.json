@@ -1,0 +1,7 @@
+{
+  "extends": "_base.json",
+  "id": "04-outro",
+  "output": "../raw/04-outro.mp4",
+  "minDurationMs": 4200,
+  "card": { "template": "outro", "motif": "wave", "exitMs": 0, "lines": ["See risks early.", "**Ship on time.**"], "button": "Start free", "url": "app.example.com" }
+}

@@ -26,6 +26,7 @@ cp .env.example .env              # add ELEVENLABS_API_KEY (skip it for silent v
 bash scripts/setup-tools.sh       # Playwright + Chromium + ffmpeg, no sudo
 bash scripts/doctor.sh            # what is ready, what is missing
 bash scripts/selftest.sh          # records the bundled sample app end to end (~30 s)
+bash scripts/selftest.sh --look   # the same app as a branded film: cards, stage, SFX, music (~60 s)
 ```
 
 Then open the folder with your coding agent and ask, for example:
@@ -69,6 +70,9 @@ scripts/
   record.mjs                   Playwright recorder (CDP screencast) and animated card renderer
   build-clip.mjs  concat.mjs   stage compositing, narration + SFX; join, music bed, loudness
   music.py                     offline music bed and UI sound effects (stdlib only)
+  produce.mjs                  one command from scenes to a mastered, checked, opened video
+  sync-report.mjs              a take's voice and actions on one timeline
+  sheet.mjs                    screenshots side by side, for probing screens
   qa-frames.sh  av_check.py    frame contact sheets; stream, drift and silence checks
   to-gif.sh  deliver-s3.sh     GIF export; optional S3-compatible upload with verified link
 templates/
@@ -79,6 +83,7 @@ templates/
 examples/
   sample-app/                  tiny static app used by the self-test
   sample-job/                  its scenes and narration
+  sample-job-look/             the branded version: shared base scene, cards, stage, job.json
 ```
 
 ## How a narrated video is produced
@@ -90,10 +95,19 @@ sentence. That is what keeps the voice and the screen in sync without manual edi
 
 ```bash
 node scripts/narrate.mjs work/app/narration.json --dry-run      # characters, before spending
-node scripts/narrate.mjs work/app/narration.json                 # mp3 per segment + manifest
-node scripts/fit-scenes.mjs work/app/audio/manifest.json work/app/scenes/*.json
-for s in work/app/scenes/*.json; do node scripts/record.mjs "$s" && node scripts/build-clip.mjs "$s"; done
-node scripts/concat.mjs work/app/final/app-demo.mp4 work/app/clips/*.mp4
+node scripts/produce.mjs work/app --open                        # everything below, in one run
+```
+
+`produce.mjs` narrates (cached), sizes the scenes, re-records only scenes whose content
+changed, builds the clips, writes a music bed of the exact length, joins, masters to -16 LUFS,
+runs the checks, writes a contact sheet and opens the result. The single steps stay available:
+
+```bash
+node scripts/narrate.mjs work/app/narration.json --timestamps
+node scripts/fit-scenes.mjs work/app/audio/manifest.json work/app/scenes/*.json --bpm 100
+node scripts/record.mjs work/app/scenes/03-board.json && node scripts/sync-report.mjs work/app/scenes/03-board.json
+node scripts/build-clip.mjs work/app/scenes/03-board.json
+node scripts/concat.mjs work/app/final/app-demo.mp4 work/app/clips/*.mp4 --music work/app/audio/music.wav --loudness -16
 python3 scripts/av_check.py work/app/final/app-demo.mp4 --expect-audio
 ```
 

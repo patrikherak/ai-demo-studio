@@ -1,0 +1,18 @@
+:root {
+  --brand-bg: #f5f6f4;
+  --brand-ink: #14201c;
+  --brand-primary: #0f7a64;
+  --brand-secondary: #d9822b;
+  --brand-accent-2: #d9822b;
+  --brand-accent-3: #5b5bd6;
+  --brand-tint-1: #dcefe9;
+  --brand-tint-2: #fbeedd;
+  --brand-tint-3: #e7e7fb;
+  --brand-muted: #5f6b67;
+  --brand-dark: #10201b;
+  --brand-surface: #ffffff;
+  --brand-surface-2: #e9ece9;
+  --brand-radius-card: 20px;
+  --brand-font-heading: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --brand-font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}

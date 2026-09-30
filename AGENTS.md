@@ -15,7 +15,8 @@ a git URL), you produce a finished, narrated demo video of it, end to end, on th
    bash scripts/doctor.sh
    ```
 3. Ask the user for the brief once (see the orchestrator), then work through the phases without
-   waiting for further input unless a gate cannot be passed.
+   waiting for further input unless a gate cannot be passed. Once scenes exist,
+   `node scripts/produce.mjs work/<slug> --open` takes them to a checked, opened video.
 
 ## Skills
 

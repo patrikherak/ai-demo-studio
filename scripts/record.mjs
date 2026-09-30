@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { renderCardScene } from "./lib/cards.mjs";
 import { fail, loadEnv } from "./lib/env.mjs";
 import { encoderArgs, loadChromium } from "./lib/frames.mjs";
 import { ffmpegBin, run } from "./lib/media.mjs";
+import { loadScene, sceneHash } from "./lib/scene.mjs";
 import { validateStage } from "./lib/stage.mjs";
 
 const HELP = `Record one scene of a product demo with Playwright.
@@ -13,7 +15,10 @@ const HELP = `Record one scene of a product demo with Playwright.
 
 Writes the raw video to scene.output (.mp4 or .webm) and a sidecar <output>.json
 with startSec (where the scene begins after loading), sceneSec, every miss and the
-focus events (clicks, typing, highlights, legends) that the stage compositor uses.
+focus events (clicks, typing, highlights, legends) that the stage compositor uses,
+and a sceneHash so unchanged scenes can be skipped (scripts/produce.mjs).
+"hooks": { "before": "cmd", "after": "cmd" } run shell commands in the scene's folder
+before and after the take, e.g. to undo a booking the previous take created.
 Exit code 2 = a selector was not found (the take is not usable in strict mode).
 
 capture "screencast" (default) grabs full-quality frames over CDP at the scene's
@@ -24,14 +29,14 @@ The scene format is documented in skills/record-scenes/SKILL.md.`;
 
 const STEP_KEYS = new Set([
   "goto", "waitFor", "waitForGone", "waitMs", "mark", "click", "moveTo", "hover", "fill", "type", "press",
-  "scrollTo", "scrollY", "legend", "highlight", "screenshot", "evaluate", "note", "focus", "upload",
+  "scrollTo", "scrollY", "scroll", "legend", "highlight", "screenshot", "evaluate", "note", "focus", "upload",
 ]);
 const SCENE_KEYS = new Set([
   "id", "title", "baseUrl", "output", "viewport", "videoSize", "deviceScaleFactor", "colorScheme", "locale",
   "timezoneId", "storageState", "saveStorageState", "cookies", "localStorage", "hide", "mask", "maskText",
   "initScript", "accent", "setup", "authUrl", "steps", "minDurationMs", "tailMs", "timeoutMs", "strict",
   "headless", "narration", "narrationGapMs", "leadInMs", "reserveMs", "audio", "clip", "notes",
-  "capture", "captureQuality", "fps", "brand", "stage", "card", "canvas", "theme", "routes", "cues", "words", "beatMs", "sfx", "sfxCues",
+  "capture", "captureQuality", "fps", "brand", "stage", "card", "canvas", "theme", "routes", "cues", "words", "beatMs", "sfx", "sfxCues", "hooks",
 ]);
 
 const args = process.argv.slice(2);
@@ -42,7 +47,7 @@ if (!args.length || args.includes("-h") || args.includes("--help")) {
 loadEnv();
 
 const scenePath = resolve(args[0]);
-const scene = JSON.parse(readFileSync(scenePath, "utf8"));
+const scene = loadScene(scenePath);
 const problems = [];
 for (const key of Object.keys(scene)) if (!SCENE_KEYS.has(key)) problems.push(`unknown scene key "${key}"`);
 for (const [index, step] of [...(scene.setup ?? []), ...(scene.steps ?? [])].entries()) {
@@ -54,10 +59,20 @@ if (scene.capture && !["screencast", "video"].includes(scene.capture)) problems.
 problems.push(...validateStage(scene.stage));
 if (problems.length) fail(`invalid scene ${scenePath}\n  ${problems.join("\n  ")}`);
 
+function runHook(name) {
+  const command = scene.hooks?.[name];
+  if (!command) return;
+  const result = spawnSync("sh", ["-c", command], { cwd: dirname(scenePath), stdio: "inherit", env: process.env });
+  if (result.status !== 0) fail(`hooks.${name} exited ${result.status}: ${command}`);
+}
+runHook("before");
+
 if (scene.card) {
   const sidecar = await renderCardScene(scene, scenePath).catch((error) => fail(`card ${scene.id ?? scenePath}: ${error.message}`));
+  writeFileSync(`${sidecar.output}.json`, JSON.stringify({ ...sidecar, sceneHash: sceneHash(scene) }, null, 2));
   console.log(`VIDEO ${sidecar.output} card=${sidecar.template} scene=${sidecar.sceneSec}s misses=0 ${sidecar.msPerFrame} ms/frame`);
   if (sidecar.pageErrors.length) console.log(`WARN page errors: ${sidecar.pageErrors.slice(0, 3).join(" | ")}`);
+  runHook("after");
   process.exit(0);
 }
 
@@ -83,7 +98,11 @@ const staged = Boolean(scene.stage);
 const misses = [];
 const screenshots = [];
 const events = [];
-const recordEvent = (kind, data = {}) => events.push({ kind, at: Date.now(), ...data });
+let currentStep = { index: null, target: null };
+const recordEvent = (kind, data = {}) => events.push({ kind, at: Date.now(), step: currentStep.index, target: currentStep.target ?? undefined, ...data });
+const stepTarget = (step) => step.waitFor ?? step.waitForGone ?? step.click ?? step.moveTo ?? step.hover ?? step.scrollTo
+  ?? step.fill?.selector ?? step.type?.selector ?? step.upload?.click ?? step.upload?.selector ?? step.highlight?.selector
+  ?? step.highlight ?? step.focus?.selector ?? (typeof step.focus === "string" ? step.focus : null) ?? step.goto ?? null;
 mkdirSync(dirname(output), { recursive: true });
 
 const urlFor = (target) => (/^https?:\/\//.test(target) ? target : (scene.baseUrl ?? "") + target);
@@ -249,6 +268,18 @@ async function runStep(page, step, phase) {
     await page.evaluate((y) => window.scrollTo({ top: y, behavior: "smooth" }), step.scrollY);
     await page.waitForTimeout(800);
   }
+  if (step.scroll) {
+    if (record) recordEvent("scroll");
+    const { container = null, x = 0, y = 0, ms = 900 } = step.scroll;
+    await page.evaluate(({ container, x, y, ms }) => {
+      const candidates = container ? [...document.querySelectorAll(container)].filter((e) => e.getClientRects().length) : [];
+      const target = candidates.pop();
+      if (target && typeof target.scrollToPoint === "function") return target.scrollToPoint(x, y, ms);
+      (target ?? document.scrollingElement).scrollTo({ left: x, top: y, behavior: "smooth" });
+      return null;
+    }, { container, x, y, ms });
+    await page.waitForTimeout(ms + 100);
+  }
   if (step.focus !== undefined && record) {
     if (!step.focus || step.focus.reset) recordEvent("reset");
     else {
@@ -325,11 +356,11 @@ async function runStep(page, step, phase) {
 
 async function runSteps(page, steps, phase, onMark) {
   for (const [index, step] of steps.entries()) {
+    currentStep = { index: phase === "record" ? index : null, target: stepTarget(step) };
     try {
       await runStep(page, step, phase);
     } catch (error) {
-      const target = step.waitFor ?? step.waitForGone ?? step.click ?? step.moveTo ?? step.hover ?? step.scrollTo
-        ?? step.fill?.selector ?? step.type?.selector ?? step.upload?.click ?? step.upload?.selector ?? step.highlight?.selector ?? step.highlight ?? step.goto ?? "";
+      const target = stepTarget(step) ?? "";
       const miss = { phase, index, target, error: String(error.message).split("\n")[0] };
       if (!step.optional) misses.push(miss);
       console.log(`MISS ${phase}[${index}] ${JSON.stringify(target)} ${miss.error}`);
@@ -464,6 +495,7 @@ const sidecar = {
   scene: scene.id ?? null,
   output,
   capture,
+  sceneHash: sceneHash(scene),
   viewport,
   deviceScaleFactor: scene.deviceScaleFactor ?? 1,
   startSec: Number((Math.max(0, markedAt - videoStartedAt) / 1000).toFixed(3)),
@@ -479,4 +511,5 @@ const sidecar = {
 writeFileSync(`${output}.json`, JSON.stringify(sidecar, null, 2));
 console.log(`VIDEO ${output} start=${sidecar.startSec}s scene=${sidecar.sceneSec}s misses=${misses.length}`);
 if (sidecar.plannedOverrunSec > 0) console.log(`WARN actions took ${sidecar.plannedOverrunSec}s longer than minDurationMs; check narration sync`);
+runHook("after");
 process.exit(strict && misses.length ? 2 : 0);

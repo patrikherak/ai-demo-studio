@@ -1,16 +1,19 @@
 #!/usr/bin/env node
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { fail, flagValue, loadEnv } from "./lib/env.mjs";
 
 const HELP = `Extract a brand kit (colours, fonts, logo, tone) from a public website.
 
   node scripts/brand.mjs <url> <out-dir> [--pages /,/product] [--viewport 1440x900]
 
-Writes <out-dir>/brand.json, the logo file(s), full-page screenshots and
-brand.css with CSS custom properties (--brand-*) that cards, legends and the
-stage renderer can use. Review brand.json: the palette is ranked by how much
+Writes <out-dir>/brand.json, the header logo (as found and as a transparent,
+tight logo.png for uploads and cards), section screenshots and brand.css with
+CSS custom properties (--brand-*) that cards, legends and the stage renderer use.
+Only logos in the page header are taken: logo strips of customers or partners
+further down never belong in a video. Review brand.json: the palette is ranked by how much
 visible area each colour covers, and the primary colour is the most used
 saturated colour of buttons and links.`;
 
@@ -190,6 +193,21 @@ for (const [index, logo] of first.logos.entries()) {
     }
   }
 }
+let logoPng = null;
+if (logoFiles.length) {
+  const logoPage = await context.newPage();
+  await logoPage.setViewportSize({ width: 1600, height: 600 });
+  const holder = join(outDir, ".logo.html");
+  writeFileSync(holder, `<body style="margin:0;background:transparent"><img id="logo" src="${pathToFileURL(logoFiles[0]).href}" style="height:360px;width:auto;display:block"></body>`);
+  await logoPage.goto(pathToFileURL(holder).href);
+  const shown = await logoPage.locator("#logo").evaluate((img) => img.decode().then(() => img.naturalWidth > 0).catch(() => false)).catch(() => false);
+  if (shown) {
+    logoPng = join(outDir, "logo.png");
+    await logoPage.locator("#logo").screenshot({ path: logoPng, omitBackground: true });
+  }
+  await logoPage.close();
+  rmSync(holder, { force: true });
+}
 await browser.close();
 
 const merge = (key) => {
@@ -247,6 +265,7 @@ const brand = {
   radius: first.radius,
   rootVars: first.rootVars,
   logos: logoFiles.map((f) => f.slice(outDir.length + 1)),
+  logo: logoPng ? "logo.png" : null,
   favicon: first.favicon,
   ogImage: first.ogImage,
   copy: { headings: results.flatMap((r) => r.headings), buttons: [...new Set(results.flatMap((r) => r.buttons))].slice(0, 60) },

@@ -95,6 +95,20 @@ available, every word (`words`) into the scene. In cards use `"at": "cue:1"`, `"
 `"word:customers+0.4"`. Kinetic lines default to one line per sentence. A montage item per
 spoken word is the most convincing sync there is.
 
+## The sync loop
+
+Write the narration after the flows are probed, when you know how long each interaction takes.
+Then iterate per scene:
+
+1. record the take, then `node scripts/sync-report.mjs <scene.json>`
+2. if an action happens long before its sentence, add a wait at the start of the scene; if
+   it happens long after, shorten waits or give the sentence more words (never pad with filler)
+3. if actions run past the voice, split the scene or add the missing sentence
+4. change only what is visible: every number, name and state the voice mentions must be on
+   screen while it is spoken
+
+Stop when each claim is spoken within about a second of its proof; perfect is not the goal.
+
 ## Silent video
 
 If there is no narration, write the same storyboard with legends carrying the message and give

@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fail, flagValue, hasFlag } from "./lib/env.mjs";
+import { loadScene, readSceneFile } from "./lib/scene.mjs";
 
 const HELP = `Size every scene to its measured narration (audio-first workflow).
 
@@ -39,7 +40,8 @@ const bpm = Number(flagValue(args, "--bpm") ?? 0);
 const used = new Set();
 let totalMs = 0;
 for (const scenePath of positional.slice(1).map((p) => resolve(p))) {
-  const scene = JSON.parse(readFileSync(scenePath, "utf8"));
+  const scene = loadScene(scenePath);
+  const own = readSceneFile(scenePath);
   const narration = scene.narration ?? [];
   const leadInMs = scene.leadInMs ?? defaults.leadInMs;
   const gapMs = scene.narrationGapMs ?? defaults.gapMs;
@@ -60,17 +62,17 @@ for (const scenePath of positional.slice(1).map((p) => resolve(p))) {
     cursor += segment.durationSec * 1000 + gapMs;
   }
   const spoken = audio.length ? cursor - gapMs : leadInMs;
-  scene.audio = audio;
-  scene.cues = cues;
-  scene.words = words;
+  own.audio = audio;
+  own.cues = cues;
+  own.words = words;
   const beatMs = bpm ? 60000 / bpm : 0;
   const planned = Math.max(scene.minDurationMs && !audio.length ? scene.minDurationMs : 0, Math.round(spoken + reserveMs));
-  scene.minDurationMs = beatMs ? Math.round(Math.ceil(planned / beatMs) * beatMs) : planned;
-  if (beatMs) scene.beatMs = Number(beatMs.toFixed(3));
-  else delete scene.beatMs;
-  totalMs += scene.minDurationMs;
-  writeFileSync(scenePath, JSON.stringify(scene, null, 2) + "\n");
-  console.log(`${scene.id ?? scenePath}: ${audio.length} segment(s), minDurationMs=${scene.minDurationMs}`);
+  own.minDurationMs = beatMs ? Math.round(Math.ceil(planned / beatMs) * beatMs) : planned;
+  if (beatMs) own.beatMs = Number(beatMs.toFixed(3));
+  else delete own.beatMs;
+  totalMs += own.minDurationMs;
+  writeFileSync(scenePath, JSON.stringify(own, null, 2) + "\n");
+  console.log(`${scene.id ?? scenePath}: ${audio.length} segment(s), minDurationMs=${own.minDurationMs}`);
 }
 const unused = manifest.segments.map((s) => s.id).filter((id) => !used.has(id));
 if (unused.length) console.log(`WARN segments not assigned to any scene: ${unused.join(", ")}`);

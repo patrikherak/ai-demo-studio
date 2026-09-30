@@ -1,0 +1,6 @@
+{
+  "bpm": 100,
+  "sfx": true,
+  "loudness": -16,
+  "music": { "mood": "bright", "gain": -10 }
+}

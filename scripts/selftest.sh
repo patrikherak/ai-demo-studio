@@ -6,14 +6,17 @@ usage() {
 Run the whole pipeline on the bundled sample app to prove this machine is ready.
 
   bash scripts/selftest.sh            # silent video: record, clip, join, check
-  bash scripts/selftest.sh --voice    # also narrate with ElevenLabs (~250 characters)
+  bash scripts/selftest.sh --voice    # also narrate (ElevenLabs, OpenAI or say; ~250 characters)
+  bash scripts/selftest.sh --look     # branded film: cards, stage, SFX, music via produce.mjs
 
 Output: work/selftest/final/selftest.mp4, frames in work/selftest/qa/.
 TXT
 }
 [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]] && { usage; exit 0; }
 VOICE=0
+LOOK=0
 [[ "${1:-}" == "--voice" ]] && VOICE=1
+[[ "${1:-}" == "--look" ]] && LOOK=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -31,6 +34,16 @@ python3 -m http.server "$PORT" --bind 127.0.0.1 --directory examples/sample-app 
 SERVER=$!
 trap 'kill "$SERVER" 2>/dev/null || true' EXIT
 for _ in $(seq 1 40); do curl -fsS -o /dev/null "http://127.0.0.1:$PORT/index.html" && break; sleep 0.25; done
+
+if [ "$LOOK" = 1 ]; then
+  LOOKJOB="$ROOT/work/selftest-look"
+  rm -rf "$LOOKJOB"
+  mkdir -p "$LOOKJOB"
+  cp -R examples/sample-job-look/. "$LOOKJOB/"
+  node scripts/produce.mjs "$LOOKJOB" --record all
+  echo "selftest ok: $LOOKJOB/final/selftest-look-demo.mp4 (look at $LOOKJOB/qa/final/sheet.jpg)"
+  exit 0
+fi
 
 MAX_SILENCE=999
 if [ "$VOICE" = 1 ]; then

@@ -1,0 +1,7 @@
+{
+  "extends": "_base.json",
+  "id": "01-title",
+  "output": "../raw/01-title.mp4",
+  "minDurationMs": 4200,
+  "card": { "template": "kinetic", "theme": "dark", "motif": "wave", "lines": ["Deadlines slip.", "Nobody **sees it coming.**"], "lineAt": [0.3, 1.6] }
+}

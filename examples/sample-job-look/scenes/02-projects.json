@@ -1,0 +1,18 @@
+{
+  "extends": "_base.json",
+  "id": "02-projects",
+  "output": "../raw/02-projects.mp4",
+  "minDurationMs": 7200,
+  "stage": { "layout": "browser", "side": "right", "tilt": true, "url": "app.example.com/projects",
+             "eyebrow": "For teams", "title": "Every project. **One place.**", "text": "Health, owner and due date at a glance." },
+  "steps": [
+    { "goto": "/projects.html", "waitFor": "role=heading[name=\"Projects\"]" },
+    { "mark": true },
+    { "waitMs": 600 },
+    { "legend": { "style": "chip", "icon": "bell", "title": "Two projects at risk", "position": "bottom-left", "ms": 2400, "wait": false } },
+    { "waitMs": 1600 },
+    { "click": "role=link[name=\"Website relaunch\"]" },
+    { "waitFor": "role=heading[name=\"Website relaunch\"]" },
+    { "legend": { "style": "chip", "icon": "check", "title": "What changed, in one list", "position": "top-right", "ms": 2000, "tone": 1 } }
+  ]
+}

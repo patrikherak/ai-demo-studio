@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fail, flagValue, hasFlag, loadEnv } from "./lib/env.mjs";
 import { outputSize } from "./lib/frames.mjs";
 import { ffmpegBin, mediaDuration, run, streamDurations } from "./lib/media.mjs";
+import { loadScene } from "./lib/scene.mjs";
 import { renderStage, validateStage } from "./lib/stage.mjs";
 
 const HELP = `Turn one recorded scene into a finished clip: trim the loading lead-in,
@@ -34,7 +35,7 @@ if (!args.length || hasFlag(args, "-h") || hasFlag(args, "--help")) {
 loadEnv();
 
 const scenePath = resolve(args[0]);
-const scene = JSON.parse(readFileSync(scenePath, "utf8"));
+const scene = loadScene(scenePath);
 const base = dirname(scenePath);
 const raw = resolve(base, scene.output);
 if (!existsSync(raw)) fail(`raw recording ${raw} does not exist; run record.mjs first`);
