@@ -1,0 +1,22 @@
+{
+  "id": "01-overview",
+  "baseUrl": "http://127.0.0.1:8765",
+  "output": "../raw/01-overview.webm",
+  "viewport": { "width": 1280, "height": 800 },
+  "deviceScaleFactor": 1,
+  "colorScheme": "light",
+  "locale": "en-US",
+  "hide": ["#dev-badge"],
+  "mask": [{ "selector": "[data-testid=user-email]", "text": "alex.morgan@example.com" }],
+  "narration": ["s01-overview"],
+  "minDurationMs": 8000,
+  "steps": [
+    { "goto": "/index.html", "waitFor": "role=heading[name=\"Overview\"]" },
+    { "mark": true },
+    { "waitMs": 500 },
+    { "highlight": { "selector": "[data-testid=at-risk]", "ms": 2000 } },
+    { "legend": { "title": "Two projects at risk", "text": "Spotted before the deadline, not after.", "position": "bottom-right", "ms": 2400 } },
+    { "moveTo": "role=region[name=\"Weekly throughput\"]" },
+    { "waitMs": 600 }
+  ]
+}

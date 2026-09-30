@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.tools/
+work/
+node_modules/
+*.webm
+*.mp4
+*.mp3
+*.wav
+*.gif
+!examples/**/*.gif
+.rec/
+.DS_Store
+__pycache__/

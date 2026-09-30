@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pulseboard · Overview</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="shell">
+    <nav aria-label="Main">
+      <div class="brand">Pulseboard</div>
+      <a href="index.html" aria-current="page">Overview</a>
+      <a href="projects.html">Projects</a>
+      <a href="#">Reports</a>
+      <a href="#">Settings</a>
+    </nav>
+    <main>
+      <header>
+        <h1>Overview</h1>
+        <div class="sub">Signed in as <span data-testid="user-email">jordan.lee@example.com</span></div>
+      </header>
+      <section class="cards" aria-label="Key numbers">
+        <div class="card" data-testid="on-track"><div class="label">On track</div><div class="value">14</div><div class="delta">+3 since last week</div></div>
+        <div class="card" data-testid="at-risk"><div class="label">At risk</div><div class="value">2</div><div class="delta" style="color:#d97706">needs attention</div></div>
+        <div class="card" data-testid="shipped"><div class="label">Shipped this month</div><div class="value">9</div><div class="delta">best month this year</div></div>
+      </section>
+      <section class="chart" aria-label="Weekly throughput">
+        <h2 style="margin:0;font-size:18px">Weekly throughput</h2>
+        <div class="bars">
+          <div class="bar" style="height:38%"><span>W1</span></div>
+          <div class="bar" style="height:52%"><span>W2</span></div>
+          <div class="bar" style="height:47%"><span>W3</span></div>
+          <div class="bar" style="height:66%"><span>W4</span></div>
+          <div class="bar" style="height:74%"><span>W5</span></div>
+          <div class="bar" style="height:88%"><span>W6</span></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="dev-badge" id="dev-badge">dev server · hot reload</div>
+</body>
+</html>

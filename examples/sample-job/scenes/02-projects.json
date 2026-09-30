@@ -1,0 +1,21 @@
+{
+  "id": "02-projects",
+  "baseUrl": "http://127.0.0.1:8765",
+  "output": "../raw/02-projects.webm",
+  "viewport": { "width": 1280, "height": 800 },
+  "deviceScaleFactor": 1,
+  "colorScheme": "light",
+  "locale": "en-US",
+  "hide": ["#dev-badge"],
+  "narration": ["s02-projects", "s03-detail"],
+  "minDurationMs": 11000,
+  "steps": [
+    { "goto": "/projects.html", "waitFor": "role=heading[name=\"Projects\"]" },
+    { "mark": true },
+    { "highlight": { "selector": "role=columnheader[name=\"Health\"]", "ms": 1800 } },
+    { "click": "role=link[name=\"Website relaunch\"]" },
+    { "waitFor": "role=heading[name=\"Website relaunch\"]" },
+    { "highlight": { "selector": "role=region[name=\"What changed\"]", "ms": 2400 } },
+    { "screenshot": "../qa/02-projects-detail.png" }
+  ]
+}

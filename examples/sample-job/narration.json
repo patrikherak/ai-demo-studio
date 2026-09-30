@@ -1,0 +1,9 @@
+{
+  "voiceId": "",
+  "modelId": "eleven_multilingual_v2",
+  "segments": [
+    { "id": "s01-overview", "text": "Pulseboard shows your whole portfolio at a glance, and two projects already need attention." },
+    { "id": "s02-projects", "text": "Every project's health sits on one board, so the risky one stands out immediately." },
+    { "id": "s03-detail", "text": "One click shows exactly what changed, and who is on it." }
+  ]
+}
