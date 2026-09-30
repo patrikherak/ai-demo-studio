@@ -52,7 +52,52 @@ take is not usable; fix the selector or the data and record again. Each take wri
 Paths are relative to the scene file. `narration`, `audio` and `minDurationMs` are filled in by
 `fit-scenes.mjs`; you do not write them by hand for narrated videos.
 
-### Scene keys
+### Capture quality
+
+`capture: "screencast"` (default) streams full-resolution frames over CDP at the scene's
+`deviceScaleFactor` and encodes them near-lossless; use `.mp4` outputs. Record phones at
+390×844 with `deviceScaleFactor` 2 and desktops at 1600×900 with 1.25–1.5, so stage zoom stays
+sharp. `capture: "video"` falls back to Playwright's own 1 Mbit/s VP8 recorder.
+
+### Stage (composited scenes)
+
+```json
+"brand": "../brand/brand.css",
+"sfx": "../audio/sfx",
+"stage": { "layout": "phone", "side": "right", "tilt": true, "theme": "dark",
+           "eyebrow": "For teams", "title": "What matters, **first.**", "text": "…",
+           "zoom": 1.35, "url": "app.example.com" }
+```
+
+| stage key | meaning |
+|---|---|
+| `layout` | `phone` (device frame) or `browser` (window with address bar) |
+| `side` | where the device sits: `right`, `left` (text panel opposite), `center`, `top` (browser with a headline band) |
+| `eyebrow`, `title`, `text`, `bullets`, `titleSize`, `titleAt` | the side panel; title words blur in one by one |
+| `tilt` | `true` or `{ "y": 9, "x": 4, "z": 0, "drift": 0.45 }`: 3D angle that eases flatter over the scene |
+| `theme` | `dark` for a deep brand-tinted background |
+| `zoom`, `zoomOn` | auto-zoom scale (browser default 1.45, phone off) and which events trigger it (`click`, `type`, `focus`) |
+| `callouts`, `calloutOverhang` | legend steps become floating cards next to the device (`false` to disable) |
+| `chrome`, `marginX`, `marginY`, `panelWidth`, `phoneX`, `bandHeight`, `exit`, `vars` | layout fine-tuning |
+
+In a staged scene a `legend` step records a callout instead of drawing it in the page:
+`{"legend": {"style": "chip", "icon": "camera", "title": "Photo attached", "position":
+"bottom-right", "ms": 2400, "tone": 2, "dx": 0, "dy": 0, "wait": false}}`. `style: "chip"` is a
+compact icon + title (+ `text`), the default is a card with `tag`, `title`, `text`. `wait:
+false` lets the next step run while the callout is shown. Icons: news, wrench, calendar, users,
+tag, chart, file, inbox, plug, home, bell, chat, check, shield, phone, globe, key, clock, mail,
+camera, paper, sparkle, building, user, send, plus, heart, star, x, arrow.
+
+### Cards (rendered scenes)
+
+A scene with `"card"` and no `steps` is rendered from `templates/cards/card.html`, frame-exact:
+`kinetic` (`lines`), `logo` (`logo`, `tagline`), `title`, `statement`, `compare` (`left`,
+`right`), `stats` (`items`: value, suffix, label), `metric` (big counter + tilted `image` with
+`chips`), `steps`, `grid` (`items` with `icon`), `columns`, `montage` (`items`: image, kind
+`phone`|`browser`, label, at), `cta`, `outro` (`lines`, `button`, `url`). Common keys: `eyebrow`,
+`title` (`**accent**`), `theme: "dark"`, `motif: "wave"`, `at`/`lineAt`/`buttonAt` timings
+(seconds, `cue:N`, `word:x`). Paths are relative to the scene file. `card.html` in the card
+points at a custom template that defines `window.__frame(t, total)`.
 
 | key | meaning |
 |---|---|
@@ -69,6 +114,9 @@ Paths are relative to the scene file. `narration`, `audio` and `minDurationMs` a
 | `minDurationMs` | the scene lasts at least this long after its `mark` (set by `fit-scenes.mjs`) |
 | `timeoutMs` | per-step wait before a `MISS` (default 8000) |
 | `strict` | default `true`: any miss makes the take fail |
+| `routes` | `[{ "url": "**/api/x", "file": "stub.json" }]`, `body`, `rewrite: { from, to }` or `abort`: serve, rewrite or block requests |
+| `capture`, `captureQuality`, `fps` | see Capture quality |
+| `brand`, `stage`, `card`, `canvas`, `sfx`, `sfxCues` | see Stage, Cards and edit-and-deliver |
 | `tailMs` | extra time recorded after the last step (default 600) |
 
 ### Steps
@@ -88,12 +136,15 @@ Paths are relative to the scene file. `narration`, `audio` and `minDurationMs` a
 | `{"legend": {"title", "text", "position", "ms"}}` | callout box (`bottom`, `top`, `bottom-left`, `bottom-right`, `top-left`, `top-right`) |
 | `{"waitMs": 800}` | pause |
 | `{"screenshot": "../qa/02.png"}` | still image for QA |
-| `{"evaluate": "js"}` | run JavaScript in the page (escape hatch) |
+| `{"evaluate": "js"}` | run JavaScript in the page (escape hatch), e.g. scroll an inner container |
+| `{"upload": {"click": sel, "files": ["photo.jpg"]}}` | click an upload button and answer the file chooser (or `selector` of an `input[type=file]`) |
+| `{"focus": {"selector", "scale", "holdMs"}}` / `{"focus": null}` | ask the stage to zoom to an element / zoom out |
 | `"optional": true` on any step | a miss on this step does not fail the take |
 | `"timeoutMs"` on any step | per-step wait override |
 
 Selectors are Playwright selectors: `role=button[name="Save"]`, `text="Weekly report"`,
-`[data-testid=total]`, CSS.
+`[data-testid=total]`, CSS. Only visible matches count, so responsive layouts that keep a hidden
+mobile copy of a list do not steal the click.
 
 ## Logging in without filming it
 
@@ -117,6 +168,17 @@ Other scenes then use `"storageState": "../auth/state.json"` and start directly 
 
 Make a throwaway scene with the same `goto`/`waitFor` steps plus `screenshot` steps and
 `"strict": true`. Look at the screenshots. Only then write legends and interactions.
+
+## App quirks worth knowing
+
+- Mobile-first frameworks scroll an inner container, not the window: use an `evaluate` step
+  (Ionic: `document.querySelector('ion-content').scrollToPoint(0, 400, 900)`).
+- Loading overlays flash grey; `hide` them only when the step after them waits for the data it
+  needs, otherwise a click can land before the screen is ready.
+- Date pickers animate month changes: give the step after a month switch ~700 ms.
+- Pick options inside the element that opened them (`ion-alert …`, `ion-modal …`,
+  `ion-popover …`), never by bare text that also appears on the page behind.
+- Clean up what a take changed (a booking, a sign-up) before recording it again.
 
 ## Rhythm and framing
 

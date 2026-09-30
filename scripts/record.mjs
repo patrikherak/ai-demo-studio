@@ -1,27 +1,37 @@
 #!/usr/bin/env node
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { renderCardScene } from "./lib/cards.mjs";
 import { fail, loadEnv } from "./lib/env.mjs";
+import { encoderArgs, loadChromium } from "./lib/frames.mjs";
+import { ffmpegBin, run } from "./lib/media.mjs";
+import { validateStage } from "./lib/stage.mjs";
 
 const HELP = `Record one scene of a product demo with Playwright.
 
   node scripts/record.mjs <scene.json>
 
-Writes the raw video to scene.output (.webm) and a sidecar <output>.json with
-startSec (where the scene begins after loading), sceneSec and every miss.
+Writes the raw video to scene.output (.mp4 or .webm) and a sidecar <output>.json
+with startSec (where the scene begins after loading), sceneSec, every miss and the
+focus events (clicks, typing, highlights, legends) that the stage compositor uses.
 Exit code 2 = a selector was not found (the take is not usable in strict mode).
+
+capture "screencast" (default) grabs full-quality frames over CDP at the scene's
+deviceScaleFactor; "video" uses Playwright's built-in recorder (1 Mbit/s VP8).
+A scene with "card" is not a browser recording: it renders an animated title,
+stats, comparison, steps, grid, columns or call-to-action card instead.
 The scene format is documented in skills/record-scenes/SKILL.md.`;
 
 const STEP_KEYS = new Set([
   "goto", "waitFor", "waitForGone", "waitMs", "mark", "click", "moveTo", "hover", "fill", "type", "press",
-  "scrollTo", "scrollY", "legend", "highlight", "screenshot", "evaluate", "note",
+  "scrollTo", "scrollY", "legend", "highlight", "screenshot", "evaluate", "note", "focus", "upload",
 ]);
 const SCENE_KEYS = new Set([
   "id", "title", "baseUrl", "output", "viewport", "videoSize", "deviceScaleFactor", "colorScheme", "locale",
   "timezoneId", "storageState", "saveStorageState", "cookies", "localStorage", "hide", "mask", "maskText",
   "initScript", "accent", "setup", "authUrl", "steps", "minDurationMs", "tailMs", "timeoutMs", "strict",
   "headless", "narration", "narrationGapMs", "leadInMs", "reserveMs", "audio", "clip", "notes",
+  "capture", "captureQuality", "fps", "brand", "stage", "card", "canvas", "theme", "routes", "cues", "words", "beatMs", "sfx", "sfxCues",
 ]);
 
 const args = process.argv.slice(2);
@@ -39,14 +49,19 @@ for (const [index, step] of [...(scene.setup ?? []), ...(scene.steps ?? [])].ent
   for (const key of Object.keys(step)) if (!STEP_KEYS.has(key) && !["timeoutMs", "afterMs", "optional"].includes(key)) problems.push(`step ${index}: unknown key "${key}"`);
 }
 if (!scene.output) problems.push("scene.output is required");
-if (!Array.isArray(scene.steps) || !scene.steps.length) problems.push("scene.steps must be a non-empty array");
+if (!scene.card && (!Array.isArray(scene.steps) || !scene.steps.length)) problems.push("scene.steps must be a non-empty array");
+if (scene.capture && !["screencast", "video"].includes(scene.capture)) problems.push(`capture must be "screencast" or "video"`);
+problems.push(...validateStage(scene.stage));
 if (problems.length) fail(`invalid scene ${scenePath}\n  ${problems.join("\n  ")}`);
 
-const require = createRequire(import.meta.url);
-const playwrightEntry = process.env.PLAYWRIGHT_DIR
-  ? require.resolve("playwright", { paths: [process.env.PLAYWRIGHT_DIR] })
-  : "playwright";
-const { chromium } = require(playwrightEntry);
+if (scene.card) {
+  const sidecar = await renderCardScene(scene, scenePath).catch((error) => fail(`card ${scene.id ?? scenePath}: ${error.message}`));
+  console.log(`VIDEO ${sidecar.output} card=${sidecar.template} scene=${sidecar.sceneSec}s misses=0 ${sidecar.msPerFrame} ms/frame`);
+  if (sidecar.pageErrors.length) console.log(`WARN page errors: ${sidecar.pageErrors.slice(0, 3).join(" | ")}`);
+  process.exit(0);
+}
+
+const chromium = loadChromium();
 
 const baseDir = dirname(scenePath);
 const at = (p) => (p ? resolve(baseDir, p) : p);
@@ -55,8 +70,20 @@ const viewport = scene.viewport ?? { width: 1600, height: 1000 };
 const timeoutMs = scene.timeoutMs ?? 8000;
 const strict = scene.strict !== false;
 const accent = scene.accent ?? "#2563eb";
+const theme = {
+  font: "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif",
+  background: "rgba(15,23,42,.94)",
+  color: "#fff",
+  muted: "rgba(255,255,255,.92)",
+  radius: "14px",
+  ...(scene.theme ?? {}),
+};
+const capture = scene.capture ?? process.env.DEMO_CAPTURE ?? "screencast";
+const staged = Boolean(scene.stage);
 const misses = [];
 const screenshots = [];
+const events = [];
+const recordEvent = (kind, data = {}) => events.push({ kind, at: Date.now(), ...data });
 mkdirSync(dirname(output), { recursive: true });
 
 const urlFor = (target) => (/^https?:\/\//.test(target) ? target : (scene.baseUrl ?? "") + target);
@@ -138,8 +165,10 @@ async function glide(page, x, y) {
   cursor = { x, y };
 }
 
+const visible = (page, selector) => page.locator(selector).filter({ visible: true }).first();
+
 async function locate(page, selector, stepTimeout) {
-  const locator = page.locator(selector).first();
+  const locator = visible(page, selector);
   await locator.waitFor({ state: "visible", timeout: stepTimeout });
   await locator.scrollIntoViewIfNeeded({ timeout: stepTimeout });
   const box = await locator.boundingBox();
@@ -149,7 +178,7 @@ async function locate(page, selector, stepTimeout) {
 
 async function showLegend(page, legend) {
   const { title = "", text = "", position = "bottom", ms = 2600 } = legend;
-  await page.evaluate(({ title, text, position, ms }) => {
+  await page.evaluate(({ title, text, position, ms, theme }) => {
     document.getElementById("__demo_legend")?.remove();
     const wrap = document.createElement("div");
     wrap.id = "__demo_legend";
@@ -162,8 +191,8 @@ async function showLegend(page, legend) {
       "top-right": "right:24px;top:28px;",
     }[position] ?? "left:50%;bottom:32px;transform:translateX(-50%);";
     wrap.style.cssText = "position:fixed;" + pos + "z-index:2147483646;max-width:min(460px,84vw);"
-      + "background:rgba(15,23,42,.94);color:#fff;padding:14px 18px;border-radius:14px;"
-      + "box-shadow:0 18px 40px -12px rgba(0,0,0,.5);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;"
+      + "background:" + theme.background + ";color:" + theme.color + ";padding:14px 18px;border-radius:" + theme.radius + ";"
+      + "box-shadow:0 18px 40px -12px rgba(0,0,0,.5);font-family:" + theme.font + ";"
       + "opacity:0;transition:opacity .35s;";
     if (title) {
       const h = document.createElement("div");
@@ -172,19 +201,20 @@ async function showLegend(page, legend) {
       wrap.appendChild(h);
     }
     const body = document.createElement("div");
-    body.style.cssText = "font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.92);";
+    body.style.cssText = "font-size:13.5px;line-height:1.5;color:" + theme.muted + ";";
     body.textContent = text;
     wrap.appendChild(body);
     document.documentElement.appendChild(wrap);
     requestAnimationFrame(() => { wrap.style.opacity = "1"; });
     setTimeout(() => { wrap.style.opacity = "0"; setTimeout(() => wrap.remove(), 400); }, ms);
-  }, { title, text, position, ms });
+  }, { title, text, position, ms, theme });
   await page.waitForTimeout(ms + 450);
 }
 
 async function showHighlight(page, highlight, stepTimeout) {
   const { selector, ms = 2200 } = typeof highlight === "string" ? { selector: highlight } : highlight;
   const { box } = await locate(page, selector, stepTimeout);
+  recordEvent("highlight", { box, ms });
   await page.evaluate(({ box, ms, accent }) => {
     document.getElementById("__demo_highlight")?.remove();
     const ring = document.createElement("div");
@@ -201,17 +231,30 @@ async function showHighlight(page, highlight, stepTimeout) {
 
 async function runStep(page, step, phase) {
   const stepTimeout = step.timeoutMs ?? timeoutMs;
-  if (step.goto != null) await page.goto(urlFor(step.goto), { waitUntil: "domcontentloaded", timeout: Math.max(stepTimeout, 30000) });
-  if (step.waitFor) await page.locator(step.waitFor).first().waitFor({ state: "visible", timeout: stepTimeout });
+  const record = phase === "record";
+  if (step.goto != null) {
+    if (record) recordEvent("navigate", { url: step.goto });
+    await page.goto(urlFor(step.goto), { waitUntil: "domcontentloaded", timeout: Math.max(stepTimeout, 30000) });
+  }
+  if (step.waitFor) await visible(page, step.waitFor).waitFor({ state: "visible", timeout: stepTimeout });
   if (step.waitForGone) await page.locator(step.waitForGone).first().waitFor({ state: "hidden", timeout: stepTimeout });
   if (step.waitMs) await page.waitForTimeout(step.waitMs);
   if (step.scrollTo) {
-    await page.locator(step.scrollTo).first().scrollIntoViewIfNeeded({ timeout: stepTimeout });
+    if (record) recordEvent("scroll");
+    await visible(page, step.scrollTo).scrollIntoViewIfNeeded({ timeout: stepTimeout });
     await page.waitForTimeout(500);
   }
   if (step.scrollY != null) {
+    if (record) recordEvent("scroll");
     await page.evaluate((y) => window.scrollTo({ top: y, behavior: "smooth" }), step.scrollY);
     await page.waitForTimeout(800);
+  }
+  if (step.focus !== undefined && record) {
+    if (!step.focus || step.focus.reset) recordEvent("reset");
+    else {
+      const { box } = await locate(page, typeof step.focus === "string" ? step.focus : step.focus.selector, stepTimeout);
+      recordEvent("focus", { box, scale: step.focus.scale, holdMs: step.focus.holdMs });
+    }
   }
   if (step.moveTo || step.hover) {
     const { center } = await locate(page, step.moveTo ?? step.hover, stepTimeout);
@@ -219,10 +262,11 @@ async function runStep(page, step, phase) {
     else await page.mouse.move(center.x, center.y);
   }
   if (step.click) {
-    const { center } = await locate(page, step.click, stepTimeout);
-    if (phase === "record") {
+    const { center, box } = await locate(page, step.click, stepTimeout);
+    if (record) {
       await glide(page, center.x, center.y);
       await page.waitForTimeout(160);
+      recordEvent("click", { box, point: center });
     } else await page.mouse.move(center.x, center.y);
     await page.mouse.down();
     await page.waitForTimeout(80);
@@ -234,15 +278,42 @@ async function runStep(page, step, phase) {
     await locator.fill(String(step.fill.value ?? ""));
   }
   if (step.type) {
-    const { locator, center } = await locate(page, step.type.selector, stepTimeout);
-    if (phase === "record") await glide(page, center.x, center.y);
+    const { locator, center, box } = await locate(page, step.type.selector, stepTimeout);
+    if (record) {
+      recordEvent("type", { box, point: center });
+      await glide(page, center.x, center.y);
+    }
     await locator.click();
     if (step.type.clear !== false) await locator.fill("");
     await page.keyboard.type(String(step.type.text ?? ""), { delay: step.type.delayMs ?? 55 });
   }
+  if (step.upload) {
+    const files = [].concat(step.upload.files ?? step.upload.file ?? []).map((f) => at(f));
+    if (step.upload.click) {
+      const { center, box } = await locate(page, step.upload.click, stepTimeout);
+      if (record) {
+        await glide(page, center.x, center.y);
+        await page.waitForTimeout(160);
+        recordEvent("click", { box, point: center });
+      }
+      const chooser = page.waitForEvent("filechooser", { timeout: stepTimeout });
+      await page.mouse.click(center.x, center.y);
+      await (await chooser).setFiles(files);
+    } else {
+      await page.locator(step.upload.selector ?? "input[type=file]").first().setInputFiles(files, { timeout: stepTimeout });
+    }
+    await page.waitForTimeout(step.afterMs ?? (record ? 900 : 300));
+  }
   if (step.press) await page.keyboard.press(step.press);
   if (step.evaluate) await page.evaluate(step.evaluate);
-  if (step.legend && phase === "record") await showLegend(page, step.legend);
+  if (step.legend && record) {
+    const legend = step.legend;
+    const anchor = legend.anchor ? (await locate(page, legend.anchor, stepTimeout)).box : undefined;
+    const { anchor: _anchor, wait: _wait, ...fields } = legend;
+    recordEvent("legend", { ...fields, ms: legend.ms ?? 2600, box: anchor });
+    if (staged) await page.waitForTimeout((legend.ms ?? 2600) + (legend.wait === false ? -(legend.ms ?? 2600) : 450));
+    else await showLegend(page, legend);
+  }
   if (step.highlight && phase === "record") await showHighlight(page, step.highlight, stepTimeout);
   if (step.screenshot) {
     const file = at(step.screenshot);
@@ -258,7 +329,7 @@ async function runSteps(page, steps, phase, onMark) {
       await runStep(page, step, phase);
     } catch (error) {
       const target = step.waitFor ?? step.waitForGone ?? step.click ?? step.moveTo ?? step.hover ?? step.scrollTo
-        ?? step.fill?.selector ?? step.type?.selector ?? step.highlight?.selector ?? step.highlight ?? step.goto ?? "";
+        ?? step.fill?.selector ?? step.type?.selector ?? step.upload?.click ?? step.upload?.selector ?? step.highlight?.selector ?? step.highlight ?? step.goto ?? "";
       const miss = { phase, index, target, error: String(error.message).split("\n")[0] };
       if (!step.optional) misses.push(miss);
       console.log(`MISS ${phase}[${index}] ${JSON.stringify(target)} ${miss.error}`);
@@ -292,13 +363,49 @@ if (setupSteps.length) {
   await setupContext.close();
 }
 
+async function applyRoutes(context) {
+  for (const route of scene.routes ?? []) {
+    await context.route(route.url, async (r) => {
+      if (route.file) return r.fulfill({ path: at(route.file), contentType: route.contentType });
+      if (route.body !== undefined) return r.fulfill({ status: route.status ?? 200, body: typeof route.body === "string" ? route.body : JSON.stringify(route.body), contentType: route.contentType ?? "application/json" });
+      if (route.rewrite) return r.continue({ url: r.request().url().replace(new RegExp(route.rewrite.from), route.rewrite.to) });
+      if (route.abort) return r.abort();
+      return r.continue();
+    });
+  }
+}
+
 const context = await browser.newContext({
   ...contextOptions,
   storageState,
-  recordVideo: { dir: resolve(dirname(output), ".rec"), size: scene.videoSize ?? viewport },
+  ...(capture === "video" ? { recordVideo: { dir: resolve(dirname(output), ".rec"), size: scene.videoSize ?? viewport } } : {}),
 });
+await applyRoutes(context);
 await prepareContext(context);
 const page = await context.newPage();
+
+const framesDir = `${output}.frames`;
+const frames = [];
+let cdp = null;
+if (capture === "screencast") {
+  rmSync(framesDir, { recursive: true, force: true });
+  mkdirSync(framesDir, { recursive: true });
+  cdp = await context.newCDPSession(page);
+  cdp.on("Page.screencastFrame", ({ data, metadata, sessionId }) => {
+    const file = join(framesDir, `${String(frames.length + 1).padStart(6, "0")}.jpg`);
+    writeFileSync(file, Buffer.from(data, "base64"));
+    frames.push({ file, t: metadata?.timestamp ? metadata.timestamp * 1000 : Date.now() });
+    cdp.send("Page.screencastFrameAck", { sessionId }).catch(() => {});
+  });
+  const dpr = scene.deviceScaleFactor ?? 1;
+  await cdp.send("Page.startScreencast", {
+    format: "jpeg",
+    quality: scene.captureQuality ?? 92,
+    maxWidth: Math.round(viewport.width * dpr),
+    maxHeight: Math.round(viewport.height * dpr),
+    everyNthFrame: 1,
+  });
+}
 const recordingStartedAt = Date.now();
 let markedAt = null;
 const mark = () => { if (markedAt === null) markedAt = Date.now(); };
@@ -322,21 +429,51 @@ if (elapsed < minDurationMs) await page.waitForTimeout(minDurationMs - elapsed);
 await page.waitForTimeout(scene.tailMs ?? 600);
 const endedAt = Date.now();
 
-const video = page.video();
-await context.close();
-await video.saveAs(output);
-await video.delete();
-await browser.close();
+let videoStartedAt = recordingStartedAt;
+if (capture === "screencast") {
+  await cdp.send("Page.stopScreencast").catch(() => {});
+  await page.waitForTimeout(150);
+  await context.close();
+  await browser.close();
+  if (!frames.length) fail(`no frames were captured for ${scenePath}`);
+  videoStartedAt = frames[0].t;
+  const list = join(framesDir, "frames.txt");
+  const lines = [];
+  for (const [i, frame] of frames.entries()) {
+    const next = i + 1 < frames.length ? frames[i + 1].t : endedAt;
+    lines.push(`file '${frame.file}'`, `duration ${Math.max(0.001, (next - frame.t) / 1000).toFixed(4)}`);
+  }
+  lines.push(`file '${frames.at(-1).file}'`);
+  writeFileSync(list, lines.join("\n") + "\n");
+  const fps = scene.fps ?? 30;
+  run(ffmpegBin(), [
+    "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", list,
+    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p", "-fps_mode", "cfr",
+    ...encoderArgs(output, { crf: 12, preset: "veryfast", fps }), output,
+  ]);
+  rmSync(framesDir, { recursive: true, force: true });
+} else {
+  const video = page.video();
+  await context.close();
+  await video.saveAs(output);
+  await video.delete();
+  await browser.close();
+}
 
 const sidecar = {
   scene: scene.id ?? null,
   output,
-  startSec: Number(((markedAt - recordingStartedAt) / 1000).toFixed(3)),
+  capture,
+  viewport,
+  deviceScaleFactor: scene.deviceScaleFactor ?? 1,
+  startSec: Number((Math.max(0, markedAt - videoStartedAt) / 1000).toFixed(3)),
   sceneSec: Number(((endedAt - markedAt) / 1000).toFixed(3)),
   minDurationMs,
   plannedOverrunSec: minDurationMs && elapsed > minDurationMs ? Number(((elapsed - minDurationMs) / 1000).toFixed(3)) : 0,
   misses,
   screenshots,
+  events: events.map(({ at: time, ...rest }) => ({ ...rest, atMs: time - markedAt })),
+  capturedFrames: capture === "screencast" ? frames.length : undefined,
   recordedAt: new Date(recordingStartedAt).toISOString(),
 };
 writeFileSync(`${output}.json`, JSON.stringify(sidecar, null, 2));

@@ -33,6 +33,10 @@ SRC=$(bash scripts/prepare-project.sh <path-or-url> <slug> [--ref <branch|tag|sh
 Never work inside the original folder. Remember the worktree for cleanup
 (`git -C <original> worktree remove <path>`).
 
+A product split over several repositories (API, web client, a separate back-office app) gets
+one call per repository with `--as <name>`, giving `work/<slug>/source/<name>`. Prefer the main
+branch or the latest release tag (`--ref origin/main`) over whatever branch is checked out.
+
 ## 3. Inventory
 
 ```bash

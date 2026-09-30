@@ -5,13 +5,15 @@ usage() {
   cat <<'TXT'
 Put the target project into an isolated working copy, never touching the original.
 
-  bash scripts/prepare-project.sh <path-or-git-url> [slug] [--ref <branch|tag|sha>]
+  bash scripts/prepare-project.sh <path-or-git-url> [slug] [--ref <branch|tag|sha>] [--as <name>] [--copy]
 
   local path  -> git worktree (clean checkout of HEAD or --ref) when it is a git repo,
                  otherwise an rsync copy without node_modules, build output and .env files
   git url     -> shallow clone (uses GIT_TOKEN for private https repos, never printed)
 
 Result: $DEMO_WORKDIR/<slug>/source (default DEMO_WORKDIR=./work). Prints the path.
+A product split over several repositories (for example an API and a web client)
+gets one call per repository with --as: $DEMO_WORKDIR/<slug>/source/<name>.
 Uncommitted changes in a local repo are NOT carried over; pass --copy to copy the
 working tree as it is instead.
 TXT
@@ -21,11 +23,12 @@ TXT
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
 SOURCE="$1"; shift
-SLUG=""; REF="${PROJECT_REF:-}"; COPY=0
+SLUG=""; REF="${PROJECT_REF:-}"; COPY=0; AS=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --ref) REF="$2"; shift 2;;
     --copy) COPY=1; shift;;
+    --as) AS="$2"; shift 2;;
     *) SLUG="$1"; shift;;
   esac
 done
@@ -34,8 +37,8 @@ if [ -z "$SLUG" ]; then
 fi
 WORKDIR="${DEMO_WORKDIR:-$ROOT/work}"
 [[ "$WORKDIR" = /* ]] || WORKDIR="$ROOT/$WORKDIR"
-DEST="$WORKDIR/$SLUG/source"
-mkdir -p "$WORKDIR/$SLUG"
+DEST="$WORKDIR/$SLUG/source${AS:+/$AS}"
+mkdir -p "$(dirname "$DEST")"
 if [ -e "$DEST" ]; then echo "exists: $DEST (delete it to start over)" >&2; echo "$DEST"; exit 0; fi
 
 if [[ "$SOURCE" =~ ^(https?://|git@|ssh://) ]]; then

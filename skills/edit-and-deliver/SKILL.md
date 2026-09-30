@@ -19,8 +19,12 @@ silent track so all clips concatenate cleanly. Narration is never cut: if it out
 the last frame is held and a `WARN` is printed; more than ~2 s of hold means re-record the scene
 with the updated `minDurationMs` instead.
 
-Options: `--width 1920` (default: the scene's viewport width), `--crf 18` for crisper small text,
-`--fps 60` for very fast UI motion.
+Options: `--width 1920` (default: the scene's viewport width; stage and card clips use the
+1920×1080 canvas), `--crf 18` for crisper small text, `--fps 60` for very fast UI motion,
+`--sfx DIR` for sound effects (or scene `"sfx"`). Stage scenes are composited here, so layout
+changes (panel text, callout copy, theme) only need `build-clip.mjs`, not a new recording.
+Clips are encoded TV-range BT.709 for web and social players, and when `fit-scenes.mjs` ran
+with `--bpm` they are rounded up to whole beats.
 
 ## 2. Look at every clip
 
@@ -40,14 +44,18 @@ Open `qa/02-board/sheet.jpg` and check:
 
 Any failure → fix and re-record that scene only; keep good clips.
 
-## 3. Join
+## 3. Music, join, master
 
 ```bash
-node scripts/concat.mjs work/<slug>/final/<slug>-demo.mp4 work/<slug>/clips/*.mp4
+python3 scripts/music.py --duration <sum of clip durations> --bpm 100 --out work/<slug>/audio/music.wav
+node scripts/concat.mjs work/<slug>/final/<slug>-demo.mp4 work/<slug>/clips/*.mp4 \
+  --music work/<slug>/audio/music.wav --music-gain -13 --duck-db 10 --loudness -16 --open
 ```
 
-Clips are joined in the order given (name them `01-…`, `02-…`). The result is trimmed to the
-video stream when audio drifts more than 0.05 s.
+Clips are joined in the order given (name them `01-…`, `02-…`). The music bed is ducked under
+the narration, faded in and out, and the mix is mastered to -16 LUFS. Use the same `--bpm` as
+`fit-scenes.mjs` so cuts land on the beat. A licensed track works the same way. `--open` opens
+the finished file. The result is trimmed to the video stream when audio drifts more than 0.05 s.
 
 ## 4. Machine checks
 

@@ -21,6 +21,25 @@ contract between voice and picture: each sentence is spoken while its proof is v
 
 Keep each scene under 60 s of recording; split longer ones at sentence boundaries.
 
+## The production grammar
+
+Professional product films alternate a few visual types. Plan each scene as one of them:
+
+| type | scene | use for |
+|---|---|---|
+| kinetic hook | `card.template: "kinetic"`, dark | the problem in 2–3 short lines, one line per sentence |
+| logo reveal | `card.template: "logo"` | the promise, right after the hook |
+| feature beat | `stage` with `layout: "phone"` or `"browser"`, `tilt`, `eyebrow` + a 2–4 word `title` | every app moment; the panel states the claim, chips prove details |
+| infographic | `stats`, `metric`, `steps`, `compare`, `grid`, `columns` cards | numbers, flows, before/after, feature overviews |
+| montage | `card.template: "montage"` with screenshots | a fast list of capabilities, one screen per spoken word |
+| outro | `card.template: "outro"` | two-line claim, call-to-action button, URL |
+
+Alternate light and dark scenes (`"theme": "dark"`), put the phone left and right in turns, and
+keep headlines short: "Reported in **under a minute.**" (`**…**` renders in the brand colour).
+Mobile-first apps look best in `layout: "phone"`; back-office tools in `layout: "browser"`.
+Film the UI in the language it really ships in; narrate and write cards and chips in the
+brief's language.
+
 ## Storyboard table
 
 ```
@@ -67,6 +86,14 @@ Rules:
 - One segment = one scene or one sub-scene. Several segments per scene are fine when the
   picture changes between sentences.
 - Empty `voiceId` falls back to `ELEVENLABS_VOICE_ID`.
+
+## Timing cards to the voice
+
+`fit-scenes.mjs` writes the start of every spoken sentence (`cues`) and, when word timing is
+available, every word (`words`) into the scene. In cards use `"at": "cue:1"`, `"at":
+"word:tickets"`, `"word:demo:2"` (second occurrence) or an offset such as
+`"word:customers+0.4"`. Kinetic lines default to one line per sentence. A montage item per
+spoken word is the most convincing sync there is.
 
 ## Silent video
 

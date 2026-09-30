@@ -43,6 +43,19 @@ Keep the seed script in `work/<slug>/seed/` and make it idempotent (upsert or de
 of rows it owns). Mark everything it creates (a demo tenant/org/workspace, an id prefix such as
 `demo-`, or a dedicated database) so cleanup is exact.
 
+## Photos and files
+
+Screens full of placeholder images or real people look wrong. In this order:
+
+1. the project's own seed assets (check they show no real people or customers),
+2. synthetic photos: describe each in `seed/images.json` and run
+   `node scripts/images.mjs work/<slug>/seed/images.json` (OpenAI Images, cached by prompt;
+   ask for no people, faces, text or logos, and say in the report that they are synthetic),
+3. never photos scraped from the web or from real customer data.
+
+Convert them to JPEG around 1600 px before uploading them through the app's own models or
+uploaders. Logos of real customers found on a marketing site never go into a video.
+
 ## Demo user and access
 
 Create one demo user with the role that sees the whole story (often an admin of a demo
@@ -61,6 +74,10 @@ For every screen in the story, after seeding:
    invoices", three overdue invoices are on screen).
 
 Fix the seed until every screen passes. Commit nothing to the project.
+
+Also configure the tenant the way a real customer would: the product's brand colours and logo
+if it supports tenant theming, feature flags on for the story, placeholder or "not implemented"
+menu entries off, help tips and onboarding dialogs dismissed for the demo user.
 
 ## seed-manifest.json
 

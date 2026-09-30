@@ -11,7 +11,13 @@ Each scene lists its narration segment ids in "narration": ["s01", "s02"].
 Writes back into every scene:
   minDurationMs = leadIn + sum(segment durations) + gaps + reserve
   audio         = [{ "file": "...mp3", "atMs": offset from the scene start }]
-Scene-level "leadInMs", "narrationGapMs" and "reserveMs" override the flags.`;
+  cues          = [seconds from the scene start at which each spoken sentence begins]
+  words         = [{ "w": "tickets", "t": seconds }] when word timing is available
+Cards can time their lines and items to the voice with "at": "cue:2" (or "cue:2+0.3")
+or to a spoken word with "at": "word:tickets" ("word:tickets:2" = second occurrence).
+Scene-level "leadInMs", "narrationGapMs" and "reserveMs" override the flags.
+--bpm 100 rounds every scene up to whole beats so cuts land on the music's beat
+(use the same tempo for scripts/music.py).`;
 
 const args = process.argv.slice(2);
 if (args.length < 2 || hasFlag(args, "-h") || hasFlag(args, "--help")) {
@@ -29,6 +35,7 @@ const defaults = {
   gapMs: Number(flagValue(args, "--gap-ms") ?? 350),
 };
 
+const bpm = Number(flagValue(args, "--bpm") ?? 0);
 const used = new Set();
 let totalMs = 0;
 for (const scenePath of positional.slice(1).map((p) => resolve(p))) {
@@ -39,6 +46,8 @@ for (const scenePath of positional.slice(1).map((p) => resolve(p))) {
   const reserveMs = scene.reserveMs ?? defaults.reserveMs;
   let cursor = leadInMs;
   const audio = [];
+  const cues = [];
+  const words = [];
   for (const id of narration) {
     const segment = byId.get(id);
     if (!segment) fail(`${scenePath}: narration segment "${id}" is not in ${manifestPath}`);
@@ -46,11 +55,19 @@ for (const scenePath of positional.slice(1).map((p) => resolve(p))) {
     used.add(id);
     const file = resolve(dirname(manifestPath), segment.file);
     audio.push({ id, file: relative(dirname(scenePath), file), atMs: Math.round(cursor), durationMs: Math.round(segment.durationSec * 1000) });
+    for (const start of segment.sentenceStarts ?? [0]) cues.push(Number(((cursor + start * 1000) / 1000).toFixed(3)));
+    for (const w of segment.words ?? []) words.push({ w: w.word.toLowerCase().replace(/[^\p{L}\p{N}-]/gu, ""), t: Number(((cursor + w.start * 1000) / 1000).toFixed(3)) });
     cursor += segment.durationSec * 1000 + gapMs;
   }
   const spoken = audio.length ? cursor - gapMs : leadInMs;
   scene.audio = audio;
-  scene.minDurationMs = Math.max(scene.minDurationMs && !audio.length ? scene.minDurationMs : 0, Math.round(spoken + reserveMs));
+  scene.cues = cues;
+  scene.words = words;
+  const beatMs = bpm ? 60000 / bpm : 0;
+  const planned = Math.max(scene.minDurationMs && !audio.length ? scene.minDurationMs : 0, Math.round(spoken + reserveMs));
+  scene.minDurationMs = beatMs ? Math.round(Math.ceil(planned / beatMs) * beatMs) : planned;
+  if (beatMs) scene.beatMs = Number(beatMs.toFixed(3));
+  else delete scene.beatMs;
   totalMs += scene.minDurationMs;
   writeFileSync(scenePath, JSON.stringify(scene, null, 2) + "\n");
   console.log(`${scene.id ?? scenePath}: ${audio.length} segment(s), minDurationMs=${scene.minDurationMs}`);

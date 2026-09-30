@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>card</title>
+<script src="../shared/icons.js"></script>
+<style>
+:root {
+  --bg: var(--brand-bg, #f6f6f3);
+  --ink: var(--brand-ink, #16181d);
+  --muted: var(--brand-muted, #676d73);
+  --primary: var(--brand-primary, #2563eb);
+  --accent-2: var(--brand-accent-2, #0f766e);
+  --accent-3: var(--brand-accent-3, #b45309);
+  --tint-1: var(--brand-tint-1, #eef2ff);
+  --tint-2: var(--brand-tint-2, #ecfdf5);
+  --tint-3: var(--brand-tint-3, #fff7ed);
+  --surface: var(--brand-surface, #ffffff);
+  --surface-2: var(--brand-surface-2, #ecece6);
+  --dark: var(--brand-dark, #16181d);
+  --line: var(--brand-line, rgba(0,0,0,.09));
+  --heading: var(--brand-font-heading, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  --body: var(--brand-font-body, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  --radius: var(--brand-radius-card, 22px);
+  --shadow: 0 30px 70px -24px rgba(20, 24, 22, .28), 0 2px 8px rgba(20, 24, 22, .05);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --spring: cubic-bezier(.34, 1.56, .64, 1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--body); -webkit-font-smoothing: antialiased; }
+body.dark { background: radial-gradient(1300px 900px at 80% 8%, color-mix(in srgb, var(--primary) 34%, var(--dark)) 0%, transparent 72%), radial-gradient(1000px 800px at 6% 104%, color-mix(in srgb, var(--primary) 14%, var(--dark)) 0%, transparent 70%), var(--dark); color: #fff; --muted: rgba(255,255,255,.66); --line: rgba(255,255,255,.12); --surface: rgba(255,255,255,.06); }
+body.dark .backdrop { display: none; }
+.backdrop { position: absolute; inset: 0; overflow: hidden; }
+.blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .6; }
+.blob.a { width: 820px; height: 820px; right: -200px; top: -300px; background: var(--tint-1); }
+.blob.b { width: 680px; height: 680px; left: -240px; bottom: -300px; background: var(--tint-2); }
+.blob.c { width: 460px; height: 460px; right: 16%; bottom: -260px; background: var(--tint-3); opacity: .5; }
+body.dark .blob { opacity: .22; }
+body.dark .blob.a { background: var(--primary); }
+body.dark .blob.b { background: var(--accent-2); opacity: .14; }
+body.dark .blob.c { background: var(--primary); opacity: .1; }
+.motif { position: absolute; left: -40px; right: -40px; bottom: 120px; height: 120px; }
+.motif svg { width: 100%; height: 100%; overflow: visible; }
+.motif path { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 0.1 14; opacity: .75; }
+.motif .draw { animation: draw 2.4s var(--ease) both; animation-delay: calc(var(--d, 0) * 1s); }
+.motif .drift { animation: drift 12s linear both; }
+@keyframes draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes drift { from { transform: translateX(0); } to { transform: translateX(-160px); } }
+.frame { position: absolute; inset: 0; padding: 104px 128px; display: flex; flex-direction: column; justify-content: center; }
+.frame.top { justify-content: flex-start; padding-top: 112px; }
+.eyebrow { display: flex; align-items: center; gap: 14px; color: var(--primary); font-weight: 600; font-size: 19px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 26px; }
+.eyebrow::before { content: ""; width: 34px; height: 2px; background: currentColor; border-radius: 2px; }
+.eyebrow.center { justify-content: center; }
+h1 { font-family: var(--heading); font-weight: 600; letter-spacing: -.03em; line-height: 1.02; font-size: 104px; }
+h2 { font-family: var(--heading); font-weight: 600; letter-spacing: -.025em; line-height: 1.06; font-size: 68px; max-width: 1400px; }
+.sub { font-size: 30px; line-height: 1.45; color: var(--muted); max-width: 1180px; margin-top: 30px; }
+.center { text-align: center; align-items: center; margin-left: auto; margin-right: auto; }
+.accent { color: var(--primary); }
+.word { display: inline-block; }
+.in { animation: rise .9s var(--ease) both; animation-delay: calc(var(--d, 0) * 1s); }
+.blurin { animation: blurin .75s var(--ease) both; animation-delay: calc(var(--d, 0) * 1s); }
+.pop { animation: pop .7s var(--ease) both; animation-delay: calc(var(--d, 0) * 1s); }
+.spring { animation: spring .65s var(--spring) both; animation-delay: calc(var(--d, 0) * 1s); }
+.fade { animation: fade .8s ease both; animation-delay: calc(var(--d, 0) * 1s); }
+.grow { animation: grow 1s var(--ease) both; animation-delay: calc(var(--d, 0) * 1s); transform-origin: left center; }
+.dim { animation: dim .6s ease both; animation-delay: calc(var(--dim, 99) * 1s); }
+@keyframes rise { from { opacity: 0; transform: translateY(34px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes blurin { from { opacity: 0; transform: translateY(18px); filter: blur(14px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes pop { from { opacity: 0; transform: translateY(20px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes spring { from { opacity: 0; transform: translateY(14px) scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes dim { from { opacity: 1; } to { opacity: .42; } }
+.logo { height: 64px; width: auto; display: block; }
+.logo-row { display: flex; align-items: center; gap: 22px; margin-bottom: 56px; }
+body.dark .logo:not(.keep) { filter: invert(1) brightness(2); }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; font-size: 15px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: var(--primary); }
+.pill.c2 { background: var(--accent-2); } .pill.c3 { background: var(--accent-3); }
+.icon { width: 30px; height: 30px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-top: 56px; }
+.panel { border-radius: var(--radius); padding: 40px 44px; box-shadow: var(--shadow); }
+.panel.before { background: var(--surface-2); color: var(--ink); box-shadow: none; }
+.panel.after { background: var(--dark); color: #fff; }
+body.dark .panel.before { background: rgba(255,255,255,.07); color: #fff; }
+body.dark .panel.after { background: #fff; color: var(--ink); }
+.panel .label { font-size: 22px; font-weight: 600; margin-bottom: 18px; opacity: .9; }
+.panel ul { list-style: none; display: flex; flex-direction: column; }
+.panel li { display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: start; font-size: 25px; line-height: 1.38; padding: 15px 0; border-top: 1px solid var(--line); }
+.panel.after li { border-top-color: rgba(255,255,255,.12); }
+.panel li:first-child { border-top: 0; }
+.mark { width: 30px; height: 30px; margin-top: 2px; border-radius: 50%; display: grid; place-items: center; }
+.before .mark { color: var(--muted); }
+.after .mark { background: var(--primary); color: #fff; }
+.mark svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+.stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-top: 84px; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
+.stat { padding: 60px 44px 64px; border-left: 1px solid var(--line); }
+.stat:first-child { border-left: 0; }
+.stat .value { font-family: var(--heading); font-weight: 600; font-size: 92px; letter-spacing: -.04em; white-space: nowrap; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat .value .suffix { color: var(--primary); }
+.stat .label { margin-top: 24px; font-size: 26px; line-height: 1.4; color: var(--muted); }
+.note { margin-top: 30px; font-size: 19px; color: var(--muted); }
+
+.steps { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 32px; margin-top: 88px; }
+.steps .track { position: absolute; left: 42px; right: 42px; top: 41px; height: 3px; background: var(--line); border-radius: 3px; }
+.steps .track i { position: absolute; inset: 0; background: var(--primary); border-radius: 3px; }
+.step { position: relative; }
+.step .num { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--primary); font-family: var(--heading); font-size: 34px; font-weight: 600; box-shadow: var(--shadow); border: 2px solid var(--primary); position: relative; z-index: 1; }
+body.dark .step .num { background: var(--dark); }
+.step .card { margin-top: 34px; background: var(--surface); border-radius: var(--radius); padding: 36px 34px 40px; box-shadow: var(--shadow); min-height: 260px; }
+body.dark .step .card { box-shadow: none; border: 1px solid var(--line); }
+.step h3 { font-family: var(--heading); font-size: 40px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 12px; }
+.step p { font-size: 26px; line-height: 1.45; color: var(--muted); }
+
+.grid { display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); gap: 24px; margin-top: 56px; }
+.tile { background: var(--surface); border-radius: var(--radius); padding: 30px 32px; box-shadow: var(--shadow); display: grid; grid-template-columns: 58px 1fr; gap: 20px; align-items: start; }
+.tile .ico { width: 58px; height: 58px; border-radius: 16px; display: grid; place-items: center; background: var(--tint-1); color: var(--primary); }
+.tile:nth-child(3n+2) .ico { background: var(--tint-2); color: var(--accent-2); }
+.tile:nth-child(3n+3) .ico { background: var(--tint-3); color: var(--accent-3); }
+.tile h3 { font-family: var(--heading); font-size: 27px; font-weight: 600; letter-spacing: -.01em; margin: 4px 0 8px; }
+.tile p { font-size: 20px; line-height: 1.42; color: var(--muted); }
+
+.columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 28px; margin-top: 60px; }
+.column { background: var(--surface); border-radius: var(--radius); padding: 36px 38px 40px; box-shadow: var(--shadow); }
+.column h3 { font-family: var(--heading); font-size: 36px; font-weight: 600; letter-spacing: -.015em; margin: 22px 0 20px; }
+.column ul { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.column li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; font-size: 23px; line-height: 1.38; }
+.column li svg { width: 22px; height: 22px; margin-top: 4px; stroke: var(--primary); stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.column:nth-child(2) li svg { stroke: var(--accent-2); }
+.column:nth-child(3) li svg { stroke: var(--accent-3); }
+
+.cta { background: var(--dark); color: #fff; border-radius: 40px; padding: 96px 110px; text-align: center; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; }
+.cta h2 { color: #fff; max-width: 1280px; }
+.cta .sub { color: rgba(255,255,255,.72); }
+.button { margin-top: 48px; display: inline-flex; align-items: center; gap: 16px; padding: 24px 42px; border-radius: 999px; background: #fff; color: var(--dark); font-size: 28px; font-weight: 600; }
+.button svg { width: 26px; height: 26px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+.button.primary { background: var(--primary); color: #fff; box-shadow: 0 18px 40px -16px var(--primary); }
+.url { margin-top: 30px; font-size: 26px; letter-spacing: .02em; color: rgba(255,255,255,.8); }
+.cta .logo { height: 58px; margin-bottom: 48px; filter: invert(1) brightness(2); }
+.cta .logo.keep { filter: none; }
+.caption { position: absolute; left: 128px; bottom: 64px; font-size: 18px; color: var(--muted); }
+
+.kinetic { align-items: center; text-align: center; }
+.kinetic .line { font-family: var(--heading); font-weight: 600; letter-spacing: -.03em; line-height: 1.12; font-size: var(--size, 108px); }
+.kinetic .line + .line { margin-top: 10px; }
+
+.logo-card { align-items: center; text-align: center; }
+.logo-card .big { height: var(--logo-h, 170px); width: auto; animation: logoin 1.2s var(--ease) both; animation-delay: calc(var(--d, 0) * 1s); }
+@keyframes logoin { from { opacity: 0; transform: scale(.86); filter: blur(18px); } to { opacity: 1; transform: none; filter: blur(0); } }
+.logo-card .tagline { margin-top: 48px; font-size: 42px; color: var(--muted); letter-spacing: -.005em; }
+
+.metric { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 60px; }
+.metric .value { font-family: var(--heading); font-weight: 600; font-size: 200px; line-height: .95; letter-spacing: -.045em; font-variant-numeric: tabular-nums; margin-top: 36px; }
+.metric .value .suffix { color: var(--primary); }
+.metric .unit { font-size: 34px; color: var(--primary); font-weight: 600; margin-top: 18px; }
+.metric .sub { font-size: 27px; margin-top: 22px; }
+.shot { position: relative; justify-self: center; perspective: 2200px; }
+.shot .device { transform: rotateY(var(--ry, -16deg)) rotateX(var(--rx, 6deg)) rotateZ(var(--rz, 2deg)); transform-style: preserve-3d; animation: sway 10s ease-in-out both; }
+@keyframes sway { from { transform: rotateY(calc(var(--ry, -16deg) * 1.35)) rotateX(var(--rx, 6deg)) rotateZ(var(--rz, 2deg)) translateY(20px); } to { transform: rotateY(calc(var(--ry, -16deg) * .6)) rotateX(calc(var(--rx, 6deg) * .6)) rotateZ(var(--rz, 2deg)) translateY(-14px); } }
+.phone-frame { width: 400px; padding: 12px; background: #121413; border-radius: 56px; box-shadow: 0 60px 110px -30px rgba(0,0,0,.55), inset 0 0 0 2px #2c302e; }
+.phone-frame img { display: block; width: 100%; border-radius: 45px; }
+.browser-frame { width: 820px; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 60px 110px -30px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.06); }
+.browser-frame .bar { height: 34px; background: #f7f7f5; border-bottom: 1px solid rgba(0,0,0,.07); display: flex; align-items: center; gap: 7px; padding: 0 14px; }
+.browser-frame .bar i { width: 10px; height: 10px; border-radius: 50%; background: #deded9; }
+.browser-frame img { display: block; width: 100%; }
+.chip { position: absolute; display: flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px; border-radius: 16px; background: #fff; color: var(--ink); box-shadow: 0 22px 46px -16px rgba(0,0,0,.35); font-size: 22px; font-weight: 600; white-space: nowrap; z-index: 3; }
+.chip .ci { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: var(--tint-1); color: var(--primary); }
+.chip.c2 .ci { background: var(--tint-2); color: var(--accent-2); }
+.chip.c3 .ci { background: var(--tint-3); color: var(--accent-3); }
+.chip.solid { background: var(--primary); color: #fff; }
+.chip.solid .ci { background: rgba(255,255,255,.2); color: #fff; }
+.chip .ci svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.chip small { display: block; font-size: 16px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+
+.montage { position: absolute; inset: 0; }
+.slide { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; }
+.slide .holder { position: relative; }
+.slide .browser-frame { width: 1440px; }
+.slide .phone-frame { width: 440px; }
+.slide .label { position: absolute; left: -26px; bottom: -30px; padding: 14px 26px; border-radius: 14px; background: var(--primary); color: #fff; font-family: var(--heading); font-size: 36px; font-weight: 600; letter-spacing: -.01em; transform: rotate(-3deg); box-shadow: 0 20px 40px -14px rgba(0,0,0,.4); }
+
+.outro { align-items: center; text-align: center; }
+.outro .logo { height: 104px; margin-bottom: 60px; }
+.outro .line { font-family: var(--heading); font-weight: 600; letter-spacing: -.03em; line-height: 1.08; font-size: 112px; }
+.outro .url { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="backdrop"><div class="blob a"></div><div class="blob b"></div><div class="blob c"></div></div>
+<div id="root"></div>
+<script>
+const icon = (name, cls = "icon") => window.demoIcon(name, cls);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const rich = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<span class="accent">$1</span>');
+const d = (value, extra = "") => `style="--d:${Number(value).toFixed(3)};${extra}"`;
+const card = window.__CARD__ ?? { template: "title", title: "Hello" };
+const cueTime = (value) => {
+  if (typeof value !== "string") return null;
+  const cue = value.match(/^cue:(\d+)([+-][\d.]+)?$/);
+  if (cue) return card.cues?.[Number(cue[1])] !== undefined ? card.cues[Number(cue[1])] + Number(cue[2] ?? 0) : null;
+  const word = value.match(/^word:([^:+-]+)(?::(\d+))?([+-][\d.]+)?$/);
+  if (!word) return null;
+  const hits = (card.words ?? []).filter((w) => w.w === word[1].toLowerCase());
+  const hit = hits[Number(word[2] ?? 1) - 1];
+  return hit ? hit.t + Number(word[3] ?? 0) : null;
+};
+const at = (value, fallback) => (typeof value === "number" ? value : cueTime(value) ?? fallback);
+
+function eyebrow(text, delay, extra = "") {
+  return text ? `<div class="eyebrow ${extra} in" ${d(delay)}>${esc(text)}</div>` : "";
+}
+function tokens(text) {
+  const out = [];
+  const re = /\*\*(.+?)\*\*|(\S+)/g;
+  let m;
+  while ((m = re.exec(String(text ?? "")))) {
+    if (m[1]) for (const w of m[1].split(/\s+/)) out.push({ w, accent: true });
+    else out.push({ w: m[2], accent: false });
+  }
+  return out;
+}
+function words(text, delay, step = 0.07, cls = "in") {
+  return tokens(text).map((t, i) => `<span class="word ${cls}${t.accent ? " accent" : ""}" ${d(delay + i * step)}>${esc(t.w)}</span>`).join(" ");
+}
+function motif(kind, delay = 0.2) {
+  if (!kind || kind === "none") return "";
+  const points = [];
+  for (let x = 0; x <= 2200; x += 20) points.push(`${x},${60 + Math.sin(x / 150) * 34 + Math.sin(x / 67) * 8}`);
+  return `<div class="motif"><svg viewBox="0 0 2000 120" preserveAspectRatio="none"><g class="drift"><path class="draw" ${d(delay)} d="M${points.join(" L")}"/></g></svg></div>`;
+}
+function device(image, kind, extra = "") {
+  if (!image) return "";
+  if (kind === "phone") return `<div class="phone-frame" ${extra}><img src="${esc(image)}"></div>`;
+  if (kind === "plain") return `<img src="${esc(image)}" style="max-width:820px;border-radius:18px;box-shadow:var(--shadow)" ${extra}>`;
+  return `<div class="browser-frame" ${extra}><div class="bar"><i></i><i></i><i></i></div><img src="${esc(image)}"></div>`;
+}
+function chips(list, base = 0.9) {
+  return (list ?? []).map((c, i) => `<div class="chip spring ${["", "c2", "c3"][(c.tone ?? i) % 3]} ${c.solid ? "solid" : ""}" ${d(at(c.at, base + i * 0.45), `left:${c.x ?? 0}%;top:${c.y ?? 0}%`)}><span class="ci">${icon(c.icon ?? "check", "")}</span><span>${esc(c.text)}${c.detail ? `<small>${esc(c.detail)}</small>` : ""}</span></div>`).join("");
+}
+
+const T = {
+  title(c) {
+    return `<div class="frame ${c.align === "center" ? "center" : ""}">
+      ${c.logo ? `<div class="logo-row fade" ${d(at(c.logoAt, 0.1))}><img class="logo" src="${esc(c.logo)}"></div>` : ""}
+      ${eyebrow(c.eyebrow, at(c.eyebrowAt, 0.25), c.align === "center" ? "center" : "")}
+      <h1 style="max-width:${c.maxWidth ?? 1500}px">${words(c.title, at(c.titleAt, 0.45), 0.07, "blurin")}</h1>
+      ${c.subtitle ? `<p class="sub in" ${d(at(c.subtitleAt, 1.2))}>${rich(c.subtitle)}</p>` : ""}
+    </div>${motif(c.motif)}`;
+  },
+  statement(c) {
+    return `<div class="frame center">
+      ${eyebrow(c.eyebrow, 0.2, "center")}
+      <h2 style="font-size:${c.size ?? 84}px;max-width:1560px">${words(c.title, at(c.titleAt, 0.4), 0.06, "blurin")}</h2>
+      ${c.subtitle ? `<p class="sub in center" ${d(at(c.subtitleAt, 1.4))}>${rich(c.subtitle)}</p>` : ""}
+    </div>${motif(c.motif)}`;
+  },
+  kinetic(c) {
+    const lines = c.lines ?? [c.title];
+    const starts = lines.map((line, i) => at(c.lineAt?.[i], cueTime(`cue:${i}`) ?? 0.3 + i * (tokens(lines[0]).length * (c.step ?? 0.14) + 0.6)));
+    return `<div class="frame kinetic" style="--size:${c.size ?? 108}px">
+      ${eyebrow(c.eyebrow, 0.1, "center")}
+      ${lines.map((line, i) => `<div class="line ${c.dimPrevious === false ? "" : "dim"}" style="--dim:${starts[i + 1] ?? 999}">${words(line, starts[i], c.step ?? 0.14, "blurin")}</div>`).join("")}
+    </div>${motif(c.motif, 0.1)}`;
+  },
+  logo(c) {
+    return `<div class="frame logo-card" style="--logo-h:${c.logoHeight ?? 170}px">
+      <img class="big ${c.keepLogoColors ? "logo keep" : "logo"}" src="${esc(c.logo)}" ${d(at(c.logoAt, 0.2))}>
+      ${c.tagline ? `<div class="tagline in" ${d(at(c.taglineAt, 1.1))}>${rich(c.tagline)}</div>` : ""}
+    </div>${motif(c.motif, 0.05)}`;
+  },
+  metric(c) {
+    const valueAt = at(c.valueAt, 0.8);
+    return `<div class="frame"><div class="metric">
+      <div>
+        ${eyebrow(c.eyebrow, 0.1)}
+        <h2 style="font-size:${c.titleSize ?? 64}px">${words(c.title, 0.25, 0.07, "blurin")}</h2>
+        <div class="value in" ${d(valueAt - 0.2)}><span data-count="${Number(c.value)}" data-at="${valueAt}" data-dur="${at(c.countDuration, 2.2)}" data-decimals="${c.decimals ?? 0}">0</span><span class="suffix">${esc(c.suffix ?? "")}</span></div>
+        ${c.unit ? `<div class="unit in" ${d(valueAt + 0.2)}>${rich(c.unit)}</div>` : ""}
+        ${c.subtitle ? `<p class="sub in" ${d(valueAt + 0.6)}>${rich(c.subtitle)}</p>` : ""}
+      </div>
+      <div class="shot pop" ${d(at(c.imageAt, 0.4), `--ry:${c.tilt?.y ?? -16}deg;--rx:${c.tilt?.x ?? 6}deg;--rz:${c.tilt?.z ?? 2}deg`)}>
+        <div class="device">${device(c.image, c.imageKind ?? "phone")}</div>
+        ${chips(c.chips, valueAt + 0.4)}
+      </div>
+    </div></div>`;
+  },
+  montage(c) {
+    return `<div class="montage">${(c.items ?? []).map((item, i) => `<div class="slide" data-slide="${i}"><div class="holder">${device(item.image, item.kind ?? c.kind ?? "browser")}${item.label ? `<div class="label">${esc(item.label)}</div>` : ""}</div></div>`).join("")}</div>`;
+  },
+  outro(c) {
+    const lines = c.lines ?? [c.title];
+    return `<div class="frame outro">
+      ${c.logo ? `<img class="logo fade ${c.keepLogoColors ? "keep" : ""}" src="${esc(c.logo)}" ${d(0.15)}>` : ""}
+      ${lines.map((line, i) => `<div class="line">${words(line, at(c.lineAt?.[i], 0.5 + i * 0.7), 0.08, "blurin")}</div>`).join("")}
+      ${c.button ? `<div><div class="button primary spring" ${d(at(c.buttonAt, 0.9 + lines.length * 0.7))}>${esc(c.button)}${icon("arrow", "")}</div></div>` : ""}
+      ${c.url ? `<div class="url fade" ${d(at(c.urlAt, 1.3 + lines.length * 0.7))}>${esc(c.url)}</div>` : ""}
+    </div>${motif(c.motif, 0.1)}`;
+  },
+  compare(c) {
+    const list = (items, base, stagger, cls) => items.map((it, i) => `<li class="in" ${d(at(it.at, base + i * stagger))}><span class="mark">${icon(cls === "after" ? "check" : "x", "")}</span><span>${rich(it.text ?? it)}</span></li>`).join("");
+    const left = c.left ?? { label: "Before", items: [] };
+    const right = c.right ?? { label: "After", items: [] };
+    const leftAt = at(left.at, 0.9);
+    const rightAt = at(right.at, leftAt + 0.5 + left.items.length * at(c.stagger, 0.35));
+    return `<div class="frame">
+      ${eyebrow(c.eyebrow, 0.1)}
+      <h2>${words(c.title, 0.3, 0.06, "blurin")}</h2>
+      <div class="compare">
+        <div class="panel before pop" ${d(leftAt - 0.3)}><div class="label">${esc(left.label)}</div><ul>${list(left.items, leftAt, at(c.stagger, 0.35), "before")}</ul></div>
+        <div class="panel after pop" ${d(rightAt - 0.3)}><div class="label">${esc(right.label)}</div><ul>${list(right.items, rightAt, at(c.stagger, 0.35), "after")}</ul></div>
+      </div>
+    </div>`;
+  },
+  stats(c) {
+    const base = at(c.itemsAt, 0.9);
+    const items = c.items.map((it, i) => {
+      const delay = at(it.at, base + i * at(c.stagger, 0.25));
+      return `<div class="stat in" ${d(delay)}><div class="value"><span data-count="${Number(it.value)}" data-at="${delay}" data-dur="${at(c.countDuration, 1.6)}" data-decimals="${it.decimals ?? 0}">0</span><span class="suffix">${esc(it.suffix ?? "")}</span></div><div class="label">${rich(it.label)}</div></div>`;
+    }).join("");
+    return `<div class="frame">
+      ${eyebrow(c.eyebrow, 0.1)}
+      <h2>${words(c.title, 0.3, 0.06, "blurin")}</h2>
+      <div class="stats">${items}</div>
+      ${c.note ? `<div class="note fade" ${d(base + c.items.length * 0.25 + 0.6)}>${esc(c.note)}</div>` : ""}
+    </div>`;
+  },
+  steps(c) {
+    const base = at(c.itemsAt, 1.0);
+    const stagger = at(c.stagger, 0.55);
+    const items = c.items.map((it, i) => {
+      const delay = at(it.at, base + i * stagger);
+      return `<div class="step"><div class="num spring" ${d(delay)}>${i + 1}</div><div class="card in" ${d(delay + 0.12)}><h3>${esc(it.title)}</h3><p>${rich(it.text)}</p></div></div>`;
+    }).join("");
+    const firstAt = at(c.items[0]?.at, base);
+    const lastAt = at(c.items.at(-1)?.at, base + (c.items.length - 1) * stagger);
+    return `<div class="frame">
+      ${eyebrow(c.eyebrow, 0.1)}
+      <h2>${words(c.title, 0.3, 0.06, "blurin")}</h2>
+      <div class="steps"><div class="track"><i class="grow" style="--d:${firstAt};animation-duration:${Math.max(0.8, lastAt - firstAt + 0.4)}s"></i></div>${items}</div>
+    </div>`;
+  },
+  grid(c) {
+    const base = at(c.itemsAt, 0.9);
+    const items = c.items.map((it, i) => `<div class="tile pop" ${d(at(it.at, base + i * at(c.stagger, 0.16)))}><div class="ico">${icon(it.icon)}</div><div><h3>${esc(it.title)}</h3>${it.text ? `<p>${rich(it.text)}</p>` : ""}</div></div>`).join("");
+    return `<div class="frame">
+      ${eyebrow(c.eyebrow, 0.1)}
+      <h2>${words(c.title, 0.3, 0.06, "blurin")}</h2>
+      <div class="grid" style="--cols:${c.columns ?? 3}">${items}</div>
+    </div>`;
+  },
+  columns(c) {
+    const base = at(c.itemsAt, 0.9);
+    const cols = c.columns.map((col, i) => {
+      const delay = at(col.at, base + i * at(c.stagger, 0.45));
+      const pill = ["", "c2", "c3"][i % 3];
+      return `<div class="column in" ${d(delay)}><span class="pill ${pill}">${esc(col.tag ?? "")}</span><h3>${esc(col.title)}</h3><ul>${col.items.map((item, j) => `<li class="fade" ${d(delay + 0.25 + j * 0.12)}>${icon("check", "")}<span>${rich(item)}</span></li>`).join("")}</ul></div>`;
+    }).join("");
+    return `<div class="frame">
+      ${eyebrow(c.eyebrow, 0.1)}
+      <h2>${words(c.title, 0.3, 0.06, "blurin")}</h2>
+      <div class="columns">${cols}</div>
+    </div>`;
+  },
+  cta(c) {
+    return `<div class="frame">
+      <div class="cta pop" ${d(0.1)}>
+        ${c.logo ? `<img class="logo fade ${c.keepLogoColors ? "keep" : ""}" src="${esc(c.logo)}" ${d(0.35)}>` : ""}
+        ${c.eyebrow ? `<div class="eyebrow center in" ${d(0.4)} style="color:rgba(255,255,255,.75)">${esc(c.eyebrow)}</div>` : ""}
+        <h2>${words(c.title, 0.55, 0.05, "blurin")}</h2>
+        ${c.subtitle ? `<p class="sub in" ${d(1.2)}>${rich(c.subtitle)}</p>` : ""}
+        ${c.button ? `<div class="button spring" ${d(at(c.buttonAt, 1.6))}>${esc(c.button)}${icon("arrow", "")}</div>` : ""}
+        ${c.url ? `<div class="url fade" ${d(at(c.urlAt, 2.0))}>${esc(c.url)}</div>` : ""}
+      </div>
+    </div>`;
+  },
+};
+
+function build() {
+  if (window.__BRAND_CSS__) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = window.__BRAND_CSS__;
+    document.head.prepend(link);
+  }
+  if (card.vars) for (const [k, v] of Object.entries(card.vars)) document.documentElement.style.setProperty(k.startsWith("--") ? k : `--${k}`, v);
+  if (card.theme === "dark") document.body.classList.add("dark");
+  if (card.background === "plain") document.querySelector(".backdrop").style.display = "none";
+  const render = T[card.template];
+  document.getElementById("root").innerHTML = render ? render(card) : `<div class="frame"><h2>Unknown template ${esc(card.template)}</h2></div>`;
+  if (card.caption) document.getElementById("root").insertAdjacentHTML("beforeend", `<div class="caption fade" ${d(1.5)}>${esc(card.caption)}</div>`);
+}
+build();
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const numberFormat = (decimals) => new Intl.NumberFormat(card.locale ?? "en-US", { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+const slides = [...document.querySelectorAll("[data-slide]")];
+const slideBackgrounds = (card.backgrounds ?? ["var(--tint-1)", "var(--dark)", "var(--tint-2)", "var(--bg)"]).map((b) => (b.startsWith("var(") || b.startsWith("#") ? b : `var(--${b})`));
+
+window.__frame = (t, total) => {
+  for (const animation of document.getAnimations()) { animation.pause(); animation.currentTime = t * 1000; }
+  for (const el of document.querySelectorAll("[data-count]")) {
+    const start = Number(el.dataset.at), dur = Number(el.dataset.dur), target = Number(el.dataset.count);
+    el.textContent = numberFormat(Number(el.dataset.decimals)).format(target * easeOut((t - start) / dur));
+  }
+  if (slides.length) {
+    const beat = card.beat ?? 0.6;
+    const start = card.startAt ?? 0.15;
+    const starts = (card.items ?? []).map((item, i) => at(item.at, start + i * beat));
+    let index = -1;
+    starts.forEach((s, i) => { if (t >= s) index = i; });
+    slides.forEach((slide, i) => {
+      const local = t - starts[i];
+      const visible = i === index;
+      slide.style.opacity = visible ? "1" : "0";
+      slide.style.background = slideBackgrounds[i % slideBackgrounds.length];
+      if (!visible) return;
+      const span = (starts[i + 1] ?? starts[i] + beat) - starts[i];
+      const p = easeOut(local / Math.min(0.35, span * 0.7));
+      const holder = slide.querySelector(".holder");
+      const tilt = i % 2 ? 2.2 : -2.2;
+      holder.style.transform = `translateX(${(1 - p) * 90}px) scale(${0.95 + 0.05 * p}) rotate(${tilt * (0.6 + 0.4 * p)}deg)`;
+      const label = slide.querySelector(".label");
+      if (label) {
+        const q = easeOut((local - 0.08) / 0.25);
+        label.style.opacity = String(q);
+        label.style.transform = `rotate(-3deg) translateY(${(1 - q) * 16}px) scale(${0.85 + 0.15 * q})`;
+      }
+    });
+  }
+  const outFor = card.exitMs === 0 ? 0 : (card.exitMs ?? 350) / 1000;
+  const root = document.getElementById("root");
+  const fadeOut = outFor > 0 && total ? clamp((total - t) / outFor) : 1;
+  root.style.opacity = String(fadeOut);
+  root.style.transform = fadeOut < 1 ? `translateY(${(1 - fadeOut) * -14}px)` : "";
+};
+</script>
+</body>
+</html>

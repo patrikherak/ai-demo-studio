@@ -14,6 +14,15 @@ long as its voice-over (audio-first).
 `.env` needs `ELEVENLABS_API_KEY`. `ELEVENLABS_VOICE_ID` and `ELEVENLABS_MODEL_ID` are defaults
 that `narration.json` can override. Never print the key.
 
+Without an ElevenLabs key the run does not stop: `narrate.mjs` uses OpenAI (`gpt-4o-mini-tts`,
+set `"openai": { "voice": "coral", "instructions": "…" }` in `narration.json` for the style) or,
+offline, macOS `say`. `--provider` or `"provider"` forces one. The manifest records which one
+was used; say so in the report.
+
+Every segment is mastered after generation (edge silence trimmed, -18 LUFS), so segments from
+different takes match. Word timing comes from ElevenLabs itself or, for the other providers,
+from OpenAI's transcription API; `fit-scenes.mjs` turns it into sentence and word cues.
+
 ## 1. Choose the voice
 
 ```bash

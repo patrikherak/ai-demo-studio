@@ -29,7 +29,7 @@ until the gate passes. Each phase has its own skill with the details.
 | 2 | Analysis | `app-analysis` | `app-map.md`: routes, selectors, data dependencies, auth, 4–7 story moments |
 | 3 | Bootstrap | `local-bootstrap` | app runs locally, health check passes, `bootstrap.md` has exact up/down commands |
 | 4 | Seed | `demo-seed-data` | every page in the story renders non-empty invented data; seed manifest written |
-| 5 | Storyboard | `storyboard-and-script` | `storyboard.md` maps every sentence to a visible proof; `narration.json` written |
+| 5 | Storyboard | `storyboard-and-script` | `brand/brand.css` extracted; `storyboard.md` maps every sentence to a visible proof; `narration.json` written |
 | 6 | Narration | `narration-elevenlabs` | `audio/manifest.json` with measured durations (skip if silent video) |
 | 7 | Recording | `record-scenes` | every scene take has zero misses and shows its proof at the right time |
 | 8 | Edit, QA, deliver | `edit-and-deliver` | `final/*.mp4` passes `av_check.py` and a frame-by-frame look; `REPORT.md` written |
@@ -46,7 +46,9 @@ state them in `brief.md`:
 - must-show features / must-avoid areas (default: pick from analysis)
 - voice style (default: warm, confident narrator; see `narration-elevenlabs`)
 - call to action and URL for the closing card (default: none)
-- delivery (default: local file; optional S3-compatible upload)
+- delivery (default: local file, opened when done; optional S3-compatible upload)
+- look (default: the product's own brand from its website via `brand.mjs`, stage + cards +
+  music; a plain screen recording only when the user asks for one)
 
 ## Workspace
 
@@ -96,17 +98,29 @@ work/<slug>/
 |---|---|
 | tools | `bash scripts/setup-tools.sh && source .tools/env.sh && bash scripts/doctor.sh` |
 | working copy | `bash scripts/prepare-project.sh <path-or-url> [slug] [--ref <ref>]` |
+| second repo | `bash scripts/prepare-project.sh <path-or-url> <slug> --as <name>` (API + web client) |
 | inventory | `node scripts/inventory.mjs work/<slug>/source > work/<slug>/inventory.md` |
+| brand kit | `node scripts/brand.mjs https://product.example work/<slug>/brand` |
+| seed photos | `node scripts/images.mjs work/<slug>/seed/images.json` |
 | voices | `node scripts/voices.mjs --accent american --use-case narration` |
 | narration | `node scripts/narrate.mjs work/<slug>/narration.json [--dry-run] [--timestamps]` |
-| size scenes | `node scripts/fit-scenes.mjs work/<slug>/audio/manifest.json work/<slug>/scenes/*.json` |
+| size scenes | `node scripts/fit-scenes.mjs work/<slug>/audio/manifest.json work/<slug>/scenes/*.json --bpm 100` |
+| music + SFX | `python3 scripts/music.py --duration <total> --bpm 100 --out work/<slug>/audio/music.wav --sfx-dir work/<slug>/audio/sfx` |
 | record | `node scripts/record.mjs work/<slug>/scenes/01-intro.json` |
 | clip | `node scripts/build-clip.mjs work/<slug>/scenes/01-intro.json` |
-| join | `node scripts/concat.mjs work/<slug>/final/<slug>-demo.mp4 work/<slug>/clips/*.mp4` |
+| join | `node scripts/concat.mjs work/<slug>/final/<slug>-demo.mp4 work/<slug>/clips/*.mp4 --music work/<slug>/audio/music.wav --loudness -16 --open` |
 | frames | `bash scripts/qa-frames.sh work/<slug>/final/<slug>-demo.mp4 work/<slug>/qa/final 16` |
 | checks | `python3 scripts/av_check.py work/<slug>/final/<slug>-demo.mp4 --expect-audio` |
 | gif | `bash scripts/to-gif.sh work/<slug>/final/<slug>-demo.mp4 work/<slug>/final/<slug>.gif 3 6` |
 | upload | `bash scripts/deliver-s3.sh work/<slug>/final/<slug>-demo.mp4` |
+
+## Never stop for a missing key
+
+The goal is an opened video without a human in the loop. Narration falls back from ElevenLabs
+to OpenAI to macOS `say`; seed photos come from `images.mjs` or the project's own seed assets;
+music and sound effects are generated offline. Report which fallback was used instead of
+waiting. Stop only for decisions that change what is true in the video (for example a UI that
+exists in one language only: film the real UI and narrate in the brief's language).
 
 ## Progress reporting
 
