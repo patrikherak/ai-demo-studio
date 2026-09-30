@@ -47,7 +47,13 @@ body.dark .window { box-shadow: 0 50px 120px -30px rgba(0, 0, 0, .7), 0 0 0 1px 
 .phone { background: #121413; border-radius: 64px; padding: 14px; box-shadow: 0 60px 120px -30px rgba(18, 22, 20, .5), inset 0 0 0 2px #2c302e; }
 body.dark .phone { box-shadow: 0 60px 140px -30px rgba(0, 0, 0, .8), inset 0 0 0 2px #3a3f3c; }
 .phone .screen { border-radius: 50px; }
-.island { position: absolute; left: 50%; top: 26px; width: 118px; height: 34px; border-radius: 20px; background: #0b0c0c; transform: translateX(-50%); z-index: 2; }
+.statusbar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; z-index: 2; font-family: -apple-system, "SF Pro Text", system-ui, sans-serif; font-weight: 600; }
+.statusbar .icons { display: flex; align-items: center; }
+.statusbar svg { display: block; fill: currentColor; }
+.island { position: absolute; left: 50%; border-radius: 999px; background: #0b0c0c; transform: translateX(-50%); z-index: 3; }
+.viewport { position: absolute; left: 0; overflow: hidden; }
+.homebar { position: absolute; left: 0; right: 0; bottom: 0; display: grid; place-items: center; z-index: 2; }
+.homebar i { display: block; border-radius: 999px; background: #111; opacity: .85; }
 .panel { position: absolute; }
 .eyebrow { display: flex; align-items: center; gap: 14px; color: var(--primary); font-weight: 600; font-size: 18px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 22px; }
 .eyebrow::before { content: ""; width: 32px; height: 2px; background: currentColor; border-radius: 2px; }
@@ -131,15 +137,30 @@ function panelHtml(cls, style) {
 
 let side = cfg.side ?? (hasText ? (layout === "phone" ? "right" : "right") : "center");
 let device, scale;
+const STATUS_ICONS = (u) => `<svg width="${18 * u}" height="${12 * u}" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+  <svg width="${16 * u}" height="${12 * u}" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0zM3.3 6.7a6.6 6.6 0 0 1 9.4 0l-1.5 1.5a4.5 4.5 0 0 0-6.4 0zM1 4.4a9.9 9.9 0 0 1 14 0l-1.5 1.5a7.8 7.8 0 0 0-11 0z"/></svg>
+  <svg width="${27 * u}" height="${13 * u}" viewBox="0 0 27 13"><rect x=".5" y=".5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="19" height="9" rx="2.2"/><path d="M24.5 4.5v4a2 2 0 0 0 0-4z" opacity=".45"/></svg>`;
+
 if (layout === "phone") {
   const bezel = 14;
+  const safe = cfg.safeArea !== false;
+  const statusH = safe ? (cfg.statusBarHeight ?? 54) : 0;
+  const homeH = safe ? (cfg.homeIndicatorHeight ?? 34) : 0;
   const phoneH = H - 2 * (cfg.marginY ?? 70);
-  scale = (phoneH - 2 * bezel) / vh;
+  scale = (phoneH - 2 * bezel) / (vh + statusH + homeH);
   const phoneW = vw * scale + 2 * bezel;
   if (!hasText && side !== "left" && side !== "right") side = "center";
   const cx = side === "center" ? W / 2 : side === "right" ? W * (cfg.phoneX ?? 0.72) : W * (1 - (cfg.phoneX ?? 0.72));
   const left = Math.round(cx - phoneW / 2), top = Math.round((H - phoneH) / 2);
-  fg.insertAdjacentHTML("beforeend", `<div class="device phone" id="device" style="left:${left}px;top:${top}px;width:${phoneW}px;height:${phoneH}px"><div class="island"></div><div class="screen" id="screen" style="width:${vw * scale}px;height:${vh * scale}px"><img id="frame"></div></div>`);
+  const u = scale;
+  const statusBg = cfg.statusBarColor ?? "#ffffff", statusInk = cfg.statusBarInk ?? "#111111", homeBg = cfg.homeIndicatorColor ?? statusBg;
+  fg.insertAdjacentHTML("beforeend", `<div class="device phone" id="device" style="left:${left}px;top:${top}px;width:${phoneW}px;height:${phoneH}px">
+    <div class="screen" style="width:${vw * u}px;height:${(vh + statusH + homeH) * u}px;background:${statusBg}">
+      ${safe ? `<div class="statusbar" style="height:${statusH * u}px;padding:0 ${26 * u}px 0 ${34 * u}px;color:${statusInk};background:${statusBg};font-size:${16 * u}px"><span>${esc(cfg.statusTime ?? "9:41")}</span><span class="icons" style="gap:${6 * u}px">${STATUS_ICONS(u)}</span></div>
+      <div class="island" style="top:${11 * u}px;width:${122 * u}px;height:${35 * u}px"></div>` : `<div class="island" style="top:${11 * u}px;width:${122 * u}px;height:${35 * u}px"></div>`}
+      <div class="viewport" id="screen" style="top:${statusH * u}px;width:${vw * u}px;height:${vh * u}px"><img id="frame"></div>
+      ${safe ? `<div class="homebar" style="height:${homeH * u}px;background:${homeBg}"><i style="width:${134 * u}px;height:${5 * u}px"></i></div>` : ""}
+    </div></div>`);
   if (hasText && side !== "center") {
     const panelW = cfg.panelWidth ?? 760;
     const px = side === "right" ? 150 : W - 150 - panelW;

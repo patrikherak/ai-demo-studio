@@ -71,8 +71,10 @@ alone.
 
 `capture: "screencast"` (default) streams full-resolution frames over CDP at the scene's
 `deviceScaleFactor` and encodes them near-lossless; use `.mp4` outputs. Record phones at
-390×844 with `deviceScaleFactor` 2 and desktops at 1600×900 with 1.25–1.5, so stage zoom stays
-sharp. `capture: "video"` falls back to Playwright's own 1 Mbit/s VP8 recorder.
+390×756 with `deviceScaleFactor` 2: that is the safe area of a 390×844 iPhone, and the phone
+stage (and the card phone frame) adds the 54 px status bar with the island and the 34 px home
+indicator around it, so app headers and back buttons never sit under the island or in a
+rounded corner. Record desktops at 1600×900 with 1.25–1.5, so stage zoom stays sharp. `capture: "video"` falls back to Playwright's own 1 Mbit/s VP8 recorder.
 
 ### Stage (composited scenes)
 
@@ -93,6 +95,8 @@ sharp. `capture: "video"` falls back to Playwright's own 1 Mbit/s VP8 recorder.
 | `theme` | `dark` for a deep brand-tinted background |
 | `zoom`, `zoomOn` | auto-zoom scale (browser default 1.45, phone off) and which events trigger it (`click`, `type`, `focus`) |
 | `callouts`, `calloutOverhang` | legend steps become floating cards next to the device (`false` to disable) |
+| `safeArea`, `statusBarHeight`, `homeIndicatorHeight` | phone status bar (time, signal, wifi, battery, island) and home indicator; `false` for a full-bleed screen |
+| `statusBarColor`, `statusBarInk`, `homeIndicatorColor`, `statusTime` | match the app's header colour (dark headers: dark bar, light ink) |
 | `chrome`, `marginX`, `marginY`, `panelWidth`, `phoneX`, `bandHeight`, `exit`, `vars` | layout fine-tuning |
 
 In a staged scene a `legend` step records a callout instead of drawing it in the page:
@@ -191,6 +195,8 @@ Make a throwaway scene with the same `goto`/`waitFor` steps plus `screenshot` st
 
 - Mobile-first frameworks scroll an inner container, not the window: use a `scroll` step with
   its `container`.
+- A smaller phone viewport pushes form fields below the fold: `scroll` the container before
+  clicking an upload button or a field near the bottom.
 - Loading overlays flash grey; `hide` them only when the step after them waits for the data it
   needs, otherwise a click can land before the screen is ready.
 - Date pickers animate month changes: give the step after a month switch ~700 ms.

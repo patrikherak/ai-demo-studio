@@ -158,8 +158,15 @@ body.dark .step .card { box-shadow: none; border: 1px solid var(--line); }
 .shot { position: relative; justify-self: center; perspective: 2200px; }
 .shot .device { transform: rotateY(var(--ry, -16deg)) rotateX(var(--rx, 6deg)) rotateZ(var(--rz, 2deg)); transform-style: preserve-3d; animation: sway 10s ease-in-out both; }
 @keyframes sway { from { transform: rotateY(calc(var(--ry, -16deg) * 1.35)) rotateX(var(--rx, 6deg)) rotateZ(var(--rz, 2deg)) translateY(20px); } to { transform: rotateY(calc(var(--ry, -16deg) * .6)) rotateX(calc(var(--rx, 6deg) * .6)) rotateZ(var(--rz, 2deg)) translateY(-14px); } }
-.phone-frame { width: 400px; padding: 12px; background: #121413; border-radius: 56px; box-shadow: 0 60px 110px -30px rgba(0,0,0,.55), inset 0 0 0 2px #2c302e; }
-.phone-frame img { display: block; width: 100%; border-radius: 45px; }
+.phone-frame { padding: 12px; background: #121413; border-radius: 56px; box-shadow: 0 60px 110px -30px rgba(0,0,0,.55), inset 0 0 0 2px #2c302e; }
+.phone-screen { position: relative; overflow: hidden; border-radius: 45px; background: #fff; }
+.phone-screen > img { display: block; width: 100%; }
+.p-status { display: flex; align-items: center; justify-content: space-between; color: #111; background: #fff; font-family: -apple-system, "SF Pro Text", system-ui, sans-serif; font-weight: 600; }
+.p-status .p-icons { display: flex; align-items: center; }
+.p-status svg { display: block; fill: currentColor; }
+.p-island { position: absolute; left: 50%; transform: translateX(-50%); border-radius: 999px; background: #0b0c0c; }
+.p-home { display: grid; place-items: center; background: #fff; }
+.p-home i { display: block; border-radius: 999px; background: #111; opacity: .85; }
 .browser-frame { width: 820px; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 60px 110px -30px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.06); }
 .browser-frame .bar { height: 34px; background: #f7f7f5; border-bottom: 1px solid rgba(0,0,0,.07); display: flex; align-items: center; gap: 7px; padding: 0 14px; }
 .browser-frame .bar i { width: 10px; height: 10px; border-radius: 50%; background: #deded9; }
@@ -177,7 +184,6 @@ body.dark .step .card { box-shadow: none; border: 1px solid var(--line); }
 .slide { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; }
 .slide .holder { position: relative; }
 .slide .browser-frame { width: 1440px; }
-.slide .phone-frame { width: 440px; }
 .slide .label { position: absolute; left: -26px; bottom: -30px; padding: 14px 26px; border-radius: 14px; background: var(--primary); color: #fff; font-family: var(--heading); font-size: 36px; font-weight: 600; letter-spacing: -.01em; transform: rotate(-3deg); box-shadow: 0 20px 40px -14px rgba(0,0,0,.4); }
 
 .outro { align-items: center; text-align: center; }
@@ -229,9 +235,22 @@ function motif(kind, delay = 0.2) {
   for (let x = 0; x <= 2200; x += 20) points.push(`${x},${60 + Math.sin(x / 150) * 34 + Math.sin(x / 67) * 8}`);
   return `<div class="motif"><svg viewBox="0 0 2000 120" preserveAspectRatio="none"><g class="drift"><path class="draw" ${d(delay)} d="M${points.join(" L")}"/></g></svg></div>`;
 }
-function device(image, kind, extra = "") {
+function statusIcons(u) {
+  return `<svg width="${18 * u}" height="${12 * u}" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="${16 * u}" height="${12 * u}" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0zM3.3 6.7a6.6 6.6 0 0 1 9.4 0l-1.5 1.5a4.5 4.5 0 0 0-6.4 0zM1 4.4a9.9 9.9 0 0 1 14 0l-1.5 1.5a7.8 7.8 0 0 0-11 0z"/></svg><svg width="${27 * u}" height="${13 * u}" viewBox="0 0 27 13"><rect x=".5" y=".5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="19" height="9" rx="2.2"/><path d="M24.5 4.5v4a2 2 0 0 0 0-4z" opacity=".45"/></svg>`;
+}
+function phone(image, width, extra = "") {
+  const u = (width - 24) / 390;
+  const safe = card.safeArea !== false;
+  return `<div class="phone-frame" style="width:${width}px" ${extra}><div class="phone-screen">
+    ${safe ? `<div class="p-status" style="height:${54 * u}px;padding:0 ${26 * u}px 0 ${34 * u}px;font-size:${16 * u}px"><span>${esc(card.statusTime ?? "9:41")}</span><span class="p-icons" style="gap:${6 * u}px">${statusIcons(u)}</span></div>` : ""}
+    <div class="p-island" style="top:${11 * u}px;width:${122 * u}px;height:${35 * u}px"></div>
+    <img src="${esc(image)}">
+    ${safe ? `<div class="p-home" style="height:${34 * u}px"><i style="width:${134 * u}px;height:${5 * u}px"></i></div>` : ""}
+  </div></div>`;
+}
+function device(image, kind, extra = "", width = 400) {
   if (!image) return "";
-  if (kind === "phone") return `<div class="phone-frame" ${extra}><img src="${esc(image)}"></div>`;
+  if (kind === "phone") return phone(image, width, extra);
   if (kind === "plain") return `<img src="${esc(image)}" style="max-width:820px;border-radius:18px;box-shadow:var(--shadow)" ${extra}>`;
   return `<div class="browser-frame" ${extra}><div class="bar"><i></i><i></i><i></i></div><img src="${esc(image)}"></div>`;
 }
@@ -286,7 +305,7 @@ const T = {
     </div></div>`;
   },
   montage(c) {
-    return `<div class="montage">${(c.items ?? []).map((item, i) => `<div class="slide" data-slide="${i}"><div class="holder">${device(item.image, item.kind ?? c.kind ?? "browser")}${item.label ? `<div class="label">${esc(item.label)}</div>` : ""}</div></div>`).join("")}</div>`;
+    return `<div class="montage">${(c.items ?? []).map((item, i) => `<div class="slide" data-slide="${i}"><div class="holder">${device(item.image, item.kind ?? c.kind ?? "browser", "", 440)}${item.label ? `<div class="label">${esc(item.label)}</div>` : ""}</div></div>`).join("")}</div>`;
   },
   outro(c) {
     const lines = c.lines ?? [c.title];

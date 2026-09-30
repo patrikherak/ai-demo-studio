@@ -8,6 +8,7 @@ import { ffmpegBin, run } from "./media.mjs";
 export const STAGE_KEYS = new Set([
   "layout", "url", "eyebrow", "title", "text", "bullets", "side", "phoneX", "panelWidth", "marginX", "marginY", "bandHeight",
   "chrome", "zoom", "zoomOn", "callouts", "calloutOverhang", "exit", "vars", "tilt", "theme", "titleSize", "titleAt",
+  "safeArea", "statusBarHeight", "homeIndicatorHeight", "statusBarColor", "statusBarInk", "homeIndicatorColor", "statusTime",
 ]);
 
 export function validateStage(stage) {
