@@ -142,7 +142,10 @@ const luminance = (hex) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ channel: "chrome", chromiumSandbox: true }).catch((error) => {
+  console.error(`system Chrome unavailable, using the bundled Chromium: ${error.message.split("\n")[0]}`);
+  return chromium.launch();
+});
 const context = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 1 });
 const page = await context.newPage();
 const fontRequests = new Set();
